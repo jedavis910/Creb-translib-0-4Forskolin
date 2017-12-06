@@ -65,7 +65,7 @@ SP3_SP5_map <- barcode_map %>%
 #comparisons between subpools might not be as precise because of this but it allows us to 
 #normaize reads to the background sequence in SP5.
 
-bc_map_join_subpoolnorm_bc <- function(df1, df2) {
+bc_map_join_bc <- function(df1, df2) {
   keep_bc <- left_join(df1, df2, by = 'barcode') %>%
     mutate(num_reads = if_else(
       is.na(num_reads), 
@@ -77,23 +77,23 @@ bc_map_join_subpoolnorm_bc <- function(df1, df2) {
   return(keep_bc)
 }
 
-bc_join_DNA <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_DNA)
-bc_join_R0A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R0A)
-bc_join_R0B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R0B)
-bc_join_R2_5A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_5A)
-bc_join_R2_5B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_5B)
-bc_join_R2_4A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_4A)
-bc_join_R2_4B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_4B)
-bc_join_R2_3A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_3A)
-bc_join_R2_3B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_3B)
-bc_join_R2_2A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_2A)
-bc_join_R2_2B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_2B)
-bc_join_R2_1A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_1A)
-bc_join_R2_1B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R2_1B)
-bc_join_R20A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R20A)
-bc_join_R20B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R20B)
-bc_join_R22A <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R22A)
-bc_join_R22B <- bc_map_join_subpoolnorm_bc(SP3_SP5_map, bc_R22B)
+bc_join_DNA <- bc_map_join_bc(SP3_SP5_map, bc_DNA)
+bc_join_R0A <- bc_map_join_bc(SP3_SP5_map, bc_R0A)
+bc_join_R0B <- bc_map_join_bc(SP3_SP5_map, bc_R0B)
+bc_join_R2_5A <- bc_map_join_bc(SP3_SP5_map, bc_R2_5A)
+bc_join_R2_5B <- bc_map_join_bc(SP3_SP5_map, bc_R2_5B)
+bc_join_R2_4A <- bc_map_join_bc(SP3_SP5_map, bc_R2_4A)
+bc_join_R2_4B <- bc_map_join_bc(SP3_SP5_map, bc_R2_4B)
+bc_join_R2_3A <- bc_map_join_bc(SP3_SP5_map, bc_R2_3A)
+bc_join_R2_3B <- bc_map_join_bc(SP3_SP5_map, bc_R2_3B)
+bc_join_R2_2A <- bc_map_join_bc(SP3_SP5_map, bc_R2_2A)
+bc_join_R2_2B <- bc_map_join_bc(SP3_SP5_map, bc_R2_2B)
+bc_join_R2_1A <- bc_map_join_bc(SP3_SP5_map, bc_R2_1A)
+bc_join_R2_1B <- bc_map_join_bc(SP3_SP5_map, bc_R2_1B)
+bc_join_R20A <- bc_map_join_bc(SP3_SP5_map, bc_R20A)
+bc_join_R20B <- bc_map_join_bc(SP3_SP5_map, bc_R20B)
+bc_join_R22A <- bc_map_join_bc(SP3_SP5_map, bc_R22A)
+bc_join_R22B <- bc_map_join_bc(SP3_SP5_map, bc_R22B)
 
 
 #Determine variant counts by summing--------------------------------------------------------
@@ -278,7 +278,7 @@ var_log <- function(df) {
 log_rep_0_22_A_B <- var_log(rep_0_22_A_B)
 
 
-#BC analysis from summing-------------------------------------------------------------------
+#BC analysis---------------------------------------------------------------------------------
 
 #Determining subpool proportions in DNA
 
@@ -339,9 +339,9 @@ save_plot('plots/BC_num_reads_box_zoom.png',
           p_BC_num_reads_box_zoom, scale = 2.8)
 
 
-#replicate plots
+#replicate plots----------------------------------------------------------------------------
 
-#plot replicates for BC's similarly
+#plot replicates for summed variant expression
 
 p_var_rep_0 <- ggplot(NULL, aes(ratio_0A, ratio_0B)) +
   geom_point(data = log_rep_0_22_A_B, alpha = 0.3) +
@@ -537,7 +537,9 @@ p_log_var_rep_grid <- plot_grid(
 save_plot('plots/p_log_var_rep_grid.png', 
           p_log_var_rep_grid, base_height = 10, base_width = 10)
 
-#Negatives plots
+
+#Negatives plots----------------------------------------------------------------------------
+
 log_neg_cont <- function(df1) {
   neg <- filter(df1, 
          grepl(
