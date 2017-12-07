@@ -245,7 +245,7 @@ rep_0_22_A_B <- bc_conc_rep(RNA_DNA_0A, RNA_DNA_0B, RNA_DNA_2_5A, RNA_DNA_2_5B,
 #determine the log(RNA/DNA) for each sample
 
 var_log <- function(df) {
-  log_ratio_df <- rep_0_22_A_B %>% 
+  log_ratio_df <- df %>% 
     mutate_if(is.double, 
               funs(log10(.))
     )
