@@ -242,7 +242,8 @@ rep_0_22_A_B <- bc_conc_rep(RNA_DNA_0A, RNA_DNA_0B, RNA_DNA_2_5A, RNA_DNA_2_5B,
                              RNA_DNA_20A, RNA_DNA_20B, RNA_DNA_22A, RNA_DNA_22B)
 
 
-#determine the log(RNA/DNA) for each sample
+#determine the log(RNA/DNA) for each sample (this takes the log of sum_RNA and sum_DNA 
+#as well)
 
 var_log <- function(df) {
   log_ratio_df <- df %>% 
