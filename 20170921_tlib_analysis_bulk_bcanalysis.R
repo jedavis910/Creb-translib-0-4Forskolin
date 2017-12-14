@@ -70,16 +70,16 @@ bc_map_join_bc <- function(df1, df2) {
   keep_bc <- left_join(df1, df2, by = 'barcode') %>%
     mutate(num_reads = if_else(
       is.na(num_reads), 
-      as.integer(1), 
-      as.integer(num_reads + 1)
+      as.integer(0), 
+      num_reads
       )
     ) %>%
-    mutate(normalized = as.numeric((num_reads * 1000000) / (sum(num_reads))))
+    mutate(norm = as.numeric((num_reads * 1000000) / (sum(num_reads))))
   return(keep_bc)
 }
 
 bc_join_DNA <- bc_map_join_bc(SP3_SP5_map, bc_DNA)
-bc_join_DNA <- filter(bc_join_DNA, num_reads > 1)
+bc_join_DNA <- filter(bc_join_DNA, num_reads > 0)
 
 bc_join_R0A <- bc_map_join_bc(SP3_SP5_map, bc_R0A)
 bc_join_R0B <- bc_map_join_bc(SP3_SP5_map, bc_R0B)
@@ -110,7 +110,7 @@ bc_expression <- function(df1, df2) {
                         by = c("barcode", "name", "subpool", "most_common"), 
                         suffix = c("_RNA", "_DNA")
                         ) %>%
-    mutate(ratio = normalized_RNA / normalized_DNA)
+    mutate(ratio = norm_RNA / norm_DNA)
   print('x defined as RNA, y defined as DNA in bc_expression(x,y)')
   return(RNA_DNA)
 }
@@ -142,91 +142,91 @@ bc_conc_rep <- function(
   join_0 <- inner_join(df0A, df0B, 
                        by = c(
                          "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                         "normalized_DNA"
+                         "norm_DNA"
                          ), suffix = c("_0A", "_0B")
                        )
   join_2_5 <- inner_join(df2_5A, df2_5B, 
                          by = c(
                            "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                           "normalized_DNA"
+                           "norm_DNA"
                            ), suffix = c("_2_5A", "_2_5B")
                          )
   join_2_4 <- inner_join(df2_4A, df2_4B, 
                          by = c(
                            "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                           "normalized_DNA"
+                           "norm_DNA"
                            ), suffix = c("_2_4A", "_2_4B")
                          )
   join_2_3 <- inner_join(df2_3A, df2_3B, 
                          by = c(
                            "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                           "normalized_DNA"
+                           "norm_DNA"
                            ), suffix = c("_2_3A", "_2_3B")
                          )
   join_2_2 <- inner_join(df2_2A, df2_2B, 
                          by = c(
                            "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                           "normalized_DNA"
+                           "norm_DNA"
                            ), suffix = c("_2_2A", "_2_2B")
                          )
   join_2_1 <- inner_join(df2_1A, df2_1B, 
                          by = c(
                            "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                           "normalized_DNA"
+                           "norm_DNA"
                            ), suffix = c("_2_1A", "_2_1B")
                          )
   join_20 <- inner_join(df20A, df20B, 
                         by = c(
                           "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                          "normalized_DNA"
+                          "norm_DNA"
                           ), suffix = c("_20A", "_20B")
                         )
   join_22 <- inner_join(df22A, df22B, 
                         by = c(
                           "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                          "normalized_DNA"
+                          "norm_DNA"
                           ), suffix = c("_22A", "_22B")
                         )
   join_0_2_5 <- inner_join(join_0, join_2_5, 
                            by = c(
                              "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                             "normalized_DNA"
+                             "norm_DNA"
                              )
                            )
   join_0_2_4 <- inner_join(join_0_2_5, join_2_4, 
                            by = c(
                              "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                             "normalized_DNA"
+                             "norm_DNA"
                              )
                            )
   join_0_2_3 <- inner_join(join_0_2_4, join_2_3, 
                            by = c(
                              "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                             "normalized_DNA"
+                             "norm_DNA"
                              )
                            )
   join_0_2_2 <- inner_join(join_0_2_3, join_2_2, 
                            by = c(
                              "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                             "normalized_DNA"
+                             "norm_DNA"
                              )
                            )
   join_0_2_1 <- inner_join(join_0_2_2, join_2_1, 
                            by = c(
                              "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                             "normalized_DNA"
+                             "norm_DNA"
                              )
                            )
   join_0_20 <- inner_join(join_0_2_1, join_20, 
                           by = c(
                             "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                            "normalized_DNA"
+                            "norm_DNA"
                             )
                           )
   join_0_22 <- inner_join(join_0_20, join_22, 
                           by = c(
                             "barcode", "name", "subpool", "most_common", "num_reads_DNA", 
-                            "normalized_DNA"
+                            "norm_DNA"
                             )
                           )
   print(
@@ -243,7 +243,7 @@ rep_0_22_A_B <- bc_conc_rep(RNA_DNA_0A, RNA_DNA_0B, RNA_DNA_2_5A, RNA_DNA_2_5B,
 
 
 #determine the log(RNA/DNA) for each sample (this takes the log of sum_RNA and sum_DNA 
-#as well)
+#as well). Only perform this function if 0 reads have been replaced with 1
 
 var_log <- function(df) {
   log_ratio_df <- df %>% 
@@ -256,7 +256,60 @@ var_log <- function(df) {
 log_rep_0_22_A_B <- var_log(rep_0_22_A_B)
 
 
-#BC analysis from summing-------------------------------------------------------------------
+#BC analysis---------------------------------------------------------------------------------
+
+#Reads/BC of BC's with > 1 read in DNA, can have 0 reads in RNA
+
+p_BC_num_reads_viol_full <- ggplot(rep_0_22_A_B, aes(x = "", y = NULL)) +
+  geom_violin(aes(x = "DNA", y = num_reads_DNA, color = subpool)) +
+  geom_violin(aes(x = "R0.00A", y = num_reads_RNA_0A, color = subpool)) + 
+  geom_violin(aes(x = "R0.00B", y = num_reads_RNA_0B, color = subpool)) + 
+  geom_violin(aes(x = "R0.03A", y = num_reads_RNA_2_5A, color = subpool)) + 
+  geom_violin(aes(x = "R0.03B", y = num_reads_RNA_2_5B, color = subpool)) + 
+  geom_violin(aes(x = "R0.06A", y = num_reads_RNA_2_4A, color = subpool)) +
+  geom_violin(aes(x = "R0.06B", y = num_reads_RNA_2_4B, color = subpool)) + 
+  geom_violin(aes(x = "R0.13A", y = num_reads_RNA_2_3A, color = subpool)) +
+  geom_violin(aes(x = "R0.13B", y = num_reads_RNA_2_3B, color = subpool)) + 
+  geom_violin(aes(x = "R0.25A", y = num_reads_RNA_2_2A, color = subpool)) +
+  geom_violin(aes(x = "R0.25B", y = num_reads_RNA_2_2B, color = subpool)) + 
+  geom_violin(aes(x = "R0.50A", y = num_reads_RNA_2_1A, color = subpool)) +
+  geom_violin(aes(x = "R0.50B", y = num_reads_RNA_2_1B, color = subpool)) + 
+  geom_violin(aes(x = "R1.00A", y = num_reads_RNA_20A, color = subpool)) +
+  geom_violin(aes(x = "R1.00B", y = num_reads_RNA_20B, color = subpool)) + 
+  geom_violin(aes(x = "R4.00A", y = num_reads_RNA_22A, color = subpool)) +
+  geom_violin(aes(x = "R4.00B", y = num_reads_RNA_22B, color = subpool)) + 
+  xlab("") +
+  ylab("Reads per BC") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+save_plot('plots/BC_num_reads_viol_full.png',
+          p_BC_num_reads_viol_full, scale = 2.8)
+
+p_BC_num_reads_box_zoom <- ggplot(rep_0_22_A_B, aes(x = "", y = NULL)) +
+  geom_boxplot(aes(x = "DNA", y = num_reads_DNA, color = subpool)) +
+  geom_boxplot(aes(x = "R0.00A", y = num_reads_RNA_0A, color = subpool)) + 
+  geom_boxplot(aes(x = "R0.00B", y = num_reads_RNA_0B, color = subpool)) + 
+  geom_boxplot(aes(x = "R0.03A", y = num_reads_RNA_2_5A, color = subpool)) + 
+  geom_boxplot(aes(x = "R0.03B", y = num_reads_RNA_2_5B, color = subpool)) + 
+  geom_boxplot(aes(x = "R0.06A", y = num_reads_RNA_2_4A, color = subpool)) +
+  geom_boxplot(aes(x = "R0.06B", y = num_reads_RNA_2_4B, color = subpool)) + 
+  geom_boxplot(aes(x = "R0.13A", y = num_reads_RNA_2_3A, color = subpool)) +
+  geom_boxplot(aes(x = "R0.13B", y = num_reads_RNA_2_3B, color = subpool)) + 
+  geom_boxplot(aes(x = "R0.25A", y = num_reads_RNA_2_2A, color = subpool)) +
+  geom_boxplot(aes(x = "R0.25B", y = num_reads_RNA_2_2B, color = subpool)) + 
+  geom_boxplot(aes(x = "R0.50A", y = num_reads_RNA_2_1A, color = subpool)) +
+  geom_boxplot(aes(x = "R0.50B", y = num_reads_RNA_2_1B, color = subpool)) + 
+  geom_boxplot(aes(x = "R1.00A", y = num_reads_RNA_20A, color = subpool)) +
+  geom_boxplot(aes(x = "R1.00B", y = num_reads_RNA_20B, color = subpool)) + 
+  geom_boxplot(aes(x = "R4.00A", y = num_reads_RNA_22A, color = subpool)) +
+  geom_boxplot(aes(x = "R4.00B", y = num_reads_RNA_22B, color = subpool)) + 
+  xlab("") +
+  ylab("Reads per BC") + ylim(0, 25) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+save_plot('plots/BC_num_reads_box_zoom.png',
+          p_BC_num_reads_box_zoom, scale = 2.8)
+
 
 #replicate plots
 
@@ -270,8 +323,8 @@ p_bc_rep_0 <- ggplot(NULL, aes(ratio_0A, ratio_0B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -293,8 +346,8 @@ p_bc_rep_2_5 <- ggplot(NULL, aes(ratio_2_5A, ratio_2_5B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -316,8 +369,8 @@ p_bc_rep_2_4 <- ggplot(NULL, aes(ratio_2_4A, ratio_2_4B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -339,8 +392,8 @@ p_bc_rep_2_3 <- ggplot(NULL, aes(ratio_2_3A, ratio_2_3B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -362,8 +415,8 @@ p_bc_rep_2_2 <- ggplot(NULL, aes(ratio_2_2A, ratio_2_2B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -385,8 +438,8 @@ p_bc_rep_2_1 <- ggplot(NULL, aes(ratio_2_1A, ratio_2_1B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -408,8 +461,8 @@ p_bc_rep_20 <- ggplot(NULL, aes(ratio_20A, ratio_20B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -431,8 +484,8 @@ p_bc_rep_22 <- ggplot(NULL, aes(ratio_22A, ratio_22B)) +
                              name)), 
              color = 'red', alpha = 0.3) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Variant log10 Expr. Rep. 1") +
-  ylab("Variant log10 Expr. Rep. 2") +
+  xlab("Log10 BC RNA/DNA Rep. 1") +
+  ylab("Log10 BC RNA/DNA Rep. 2") +
   scale_x_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   scale_y_continuous(breaks = c(-2, -1, 0, 1, 2), limits = c(-2.5, 2.5)) + 
   annotate("text", x = -1, y = 1,
@@ -455,3 +508,7 @@ p_bc_rep_grid <- plot_grid(
 
 save_plot('plots/p_bc_rep_grid.png', 
           p_bc_rep_grid, base_height = 10, base_width = 10)
+
+
+
+
