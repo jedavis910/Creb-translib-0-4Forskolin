@@ -148,32 +148,32 @@ variant_counts_R22B <- var_sum_bc_num(bc_join_R22B)
 var_expression <- function(df1, df2) {
   RNA_DNA <- inner_join(df1, df2, 
                         by = c("name", "subpool", "most_common"), 
-                        suffix = c("_RNA", "_DNA")
-  ) %>%
+                        suffix = c("_DNA", "_RNA")
+                        ) %>%
     mutate(ratio = sum_RNA / sum_DNA)
-  print('x defined as RNA, y defined as DNA in var_expression(x,y)')
+  print('x defined as DNA, y defined as RNA in var_expression(x,y)')
   return(RNA_DNA)
 }
 
-RNA_DNA_0A <- var_expression(variant_counts_R0A, variant_counts_DNA)
-RNA_DNA_0B <- var_expression(variant_counts_R0B, variant_counts_DNA)
-RNA_DNA_2_5A <- var_expression(variant_counts_R2_5A, variant_counts_DNA)
-RNA_DNA_2_5B <- var_expression(variant_counts_R2_5B, variant_counts_DNA)
-RNA_DNA_2_4A <- var_expression(variant_counts_R2_4A, variant_counts_DNA)
-RNA_DNA_2_4B <- var_expression(variant_counts_R2_4B, variant_counts_DNA)
-RNA_DNA_2_3A <- var_expression(variant_counts_R2_3A, variant_counts_DNA)
-RNA_DNA_2_3B <- var_expression(variant_counts_R2_3B, variant_counts_DNA)
-RNA_DNA_2_2A <- var_expression(variant_counts_R2_2A, variant_counts_DNA)
-RNA_DNA_2_2B <- var_expression(variant_counts_R2_2B, variant_counts_DNA)
-RNA_DNA_2_1A <- var_expression(variant_counts_R2_1A, variant_counts_DNA)
-RNA_DNA_2_1B <- var_expression(variant_counts_R2_1B, variant_counts_DNA)
-RNA_DNA_20A <- var_expression(variant_counts_R20A, variant_counts_DNA)
-RNA_DNA_20B <- var_expression(variant_counts_R20B, variant_counts_DNA)
-RNA_DNA_22A <- var_expression(variant_counts_R22A, variant_counts_DNA)
-RNA_DNA_22B <- var_expression(variant_counts_R22B, variant_counts_DNA)
+RNA_DNA_0A <- var_expression(variant_counts_DNA, variant_counts_R0A)
+RNA_DNA_0B <- var_expression(variant_counts_DNA, variant_counts_R0B)
+RNA_DNA_2_5A <- var_expression(variant_counts_DNA, variant_counts_R2_5A)
+RNA_DNA_2_5B <- var_expression(variant_counts_DNA, variant_counts_R2_5B)
+RNA_DNA_2_4A <- var_expression(variant_counts_DNA, variant_counts_R2_4A)
+RNA_DNA_2_4B <- var_expression(variant_counts_DNA, variant_counts_R2_4B)
+RNA_DNA_2_3A <- var_expression(variant_counts_DNA, variant_counts_R2_3A)
+RNA_DNA_2_3B <- var_expression(variant_counts_DNA, variant_counts_R2_3B)
+RNA_DNA_2_2A <- var_expression(variant_counts_DNA, variant_counts_R2_2A)
+RNA_DNA_2_2B <- var_expression(variant_counts_DNA, variant_counts_R2_2B)
+RNA_DNA_2_1A <- var_expression(variant_counts_DNA, variant_counts_R2_1A)
+RNA_DNA_2_1B <- var_expression(variant_counts_DNA, variant_counts_R2_1B)
+RNA_DNA_20A <- var_expression(variant_counts_DNA, variant_counts_R20A)
+RNA_DNA_20B <- var_expression(variant_counts_DNA, variant_counts_R20B)
+RNA_DNA_22A <- var_expression(variant_counts_DNA, variant_counts_R22A)
+RNA_DNA_22B <- var_expression(variant_counts_DNA, variant_counts_R22B)
 
 
-#Tidy data of combined conc. and rep--------------------------------------------------------
+#Tidy data of combined conc. and rep, determine average expression between replicates-------
 
 var_conc_rep <- function(
   df0A, df0B, df2_5A, df2_5B, df2_4A, df2_4B, df2_3A, df2_3B, df2_2A, df2_2B, df2_1A, df2_1B, 
@@ -268,7 +268,9 @@ rep_0_22_A_B <- var_conc_rep(RNA_DNA_0A, RNA_DNA_0B, RNA_DNA_2_5A, RNA_DNA_2_5B,
 
 
 #determine the log(RNA/DNA) for each sample (this takes the log of sum_RNA and sum_DNA 
-#as well) This is useful for replicate plots, but manipulations should use rep_0_22_A_B
+#as well). Log2 is useful for replicate plots for expression and log10 is useful for barcode
+#read analysis. This is useful for replicate plots, but further manipulations should use 
+#rep_0_22_A_B
 
 var_log2 <- function(df) {
   log_ratio_df <- df %>% 
@@ -287,17 +289,10 @@ var_log10 <- function(df) {
 }
 
 log2_rep_0_22_A_B <- var_log2(rep_0_22_A_B)
+log10_rep_0_22_A_B <- var_log10(rep_0_22_A_B)
 
 
 #Separate into subpools----------------------------------------------------------------------
-
-#Perform subpool analyses without log2 data, figure out better way to condense operations
-
-
-
-
-
-
 
 #Subpool 3 contains 2 consensus binding sites with flanks (ATTGACGTCAGC) that vary in 
 #distance from one another by 0 (no inner flanks), 5, 10, 15, 20 and 70 bp (all but 0 appear 
@@ -309,7 +304,7 @@ log2_rep_0_22_A_B <- var_log2(rep_0_22_A_B)
 #replicates for plotting
 
 subpool3 <- 
-  filter(log2_rep_0_22_A_B, subpool == "subpool3") %>%
+  filter(rep_0_22_A_B, subpool == "subpool3") %>%
   ungroup() %>%
   select(-subpool) %>%
   mutate(name = gsub('2BS ', '', name), 
@@ -325,18 +320,10 @@ subpool3 <-
                            background),
          background = str_sub(background, 1, 13)
   ) %>%
-  mutate(dist = dist + 2) %>%
+  mutate(dist = as.integer(dist + 2)) %>%
   mutate(spacing = 
            ifelse(spacing != as.integer(0), 
-                  spacing + 4, spacing)) %>%
-  mutate(ave_ratio_0 = (ratio_0A + ratio_0B)/2) %>%
-  mutate(ave_ratio_2_5 = (ratio_2_5A + ratio_2_5B)/2) %>%
-  mutate(ave_ratio_2_4 = (ratio_2_4A + ratio_2_4B)/2) %>%
-  mutate(ave_ratio_2_3 = (ratio_2_3A + ratio_2_3B)/2) %>%
-  mutate(ave_ratio_2_2 = (ratio_2_2A + ratio_2_2B)/2) %>%
-  mutate(ave_ratio_2_1 = (ratio_2_1A + ratio_2_1B)/2) %>%
-  mutate(ave_ratio_20 = (ratio_20A + ratio_20B)/2) %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2)
+                  as.integer(spacing + 4), as.integer(spacing))) 
 
 #Subpool 5 contains 6 equally spaced sites spaced 13 bp apart and starting from furthest to 
 #the minP. These sites are filled with sites of either the consensus site, a weak site or no 
@@ -344,7 +331,7 @@ subpool3 <-
 #average of log2 med BC expression between biological replicates for plotting
 
 subpool5 <- 
-  filter(log2_rep_0_22_A_B, subpool == "subpool5") %>%
+  filter(rep_0_22_A_B, subpool == "subpool5") %>%
   ungroup() %>%
   select(-subpool) %>%
   mutate(name = gsub('no_site', 'nosite', name)) %>%
@@ -382,51 +369,70 @@ subpool5 <-
                            'vista chr9', background),
          background = gsub('Vista Chr5:88673410-88674494', 'vista chr5',
                            background),
-         background = str_sub(background, 1, 13)) %>%
-  mutate(ave_ratio_0 = (ratio_0A + ratio_0B)/2) %>%
-  mutate(ave_ratio_2_5 = (ratio_2_5A + ratio_2_5B)/2) %>%
-  mutate(ave_ratio_2_4 = (ratio_2_4A + ratio_2_4B)/2) %>%
-  mutate(ave_ratio_2_3 = (ratio_2_3A + ratio_2_3B)/2) %>%
-  mutate(ave_ratio_2_2 = (ratio_2_2A + ratio_2_2B)/2) %>%
-  mutate(ave_ratio_2_1 = (ratio_2_1A + ratio_2_1B)/2) %>%
-  mutate(ave_ratio_20 = (ratio_20A + ratio_20B)/2) %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2)
+         background = str_sub(background, 1, 13)) 
 
 controls <- 
-  filter(log2_rep_0_22_A_B, subpool == "control") %>%
+  filter(rep_0_22_A_B, subpool == "control") %>%
   ungroup()
 
 #Normalize each reads within each subpool to background
 
 backgrounds <- subpool5 %>%
   filter(total_sites == 0) %>%
-  select(background, ave_ratio_0, ave_ratio_2_5, ave_ratio_2_4, ave_ratio_2_3, 
-         ave_ratio_2_2, ave_ratio_2_1, ave_ratio_20, ave_ratio_22) %>%
-  rename(ave_ratio_0_back = ave_ratio_0) %>%
-  rename(ave_ratio_2_5_back = ave_ratio_2_5) %>%
-  rename(ave_ratio_2_4_back = ave_ratio_2_4) %>%
-  rename(ave_ratio_2_3_back = ave_ratio_2_3) %>%
-  rename(ave_ratio_2_2_back = ave_ratio_2_2) %>%
-  rename(ave_ratio_2_1_back = ave_ratio_2_1) %>%
-  rename(ave_ratio_20_back = ave_ratio_20) %>%
-  rename(ave_ratio_22_back = ave_ratio_22)
+  select(background, ratio_0A, ratio_0B, ratio_2_5A, ratio_2_5B, ratio_2_4A, ratio_2_4B,
+         ratio_2_3A, ratio_2_3B, ratio_2_2A, ratio_2_2B, ratio_2_1A, ratio_2_1B, 
+         ratio_20A, ratio_20B, ratio_22A, ratio_22B) %>%
+  rename(ratio_0A_back = ratio_0A) %>%
+  rename(ratio_0B_back = ratio_0B) %>%
+  rename(ratio_2_5A_back = ratio_2_5A) %>%
+  rename(ratio_2_5B_back = ratio_2_5B) %>%
+  rename(ratio_2_4A_back = ratio_2_4A) %>%
+  rename(ratio_2_4B_back = ratio_2_4B) %>%
+  rename(ratio_2_3A_back = ratio_2_3A) %>%
+  rename(ratio_2_3B_back = ratio_2_3B) %>%
+  rename(ratio_2_2A_back = ratio_2_2A) %>%
+  rename(ratio_2_2B_back = ratio_2_2B) %>%
+  rename(ratio_2_1A_back = ratio_2_1A) %>%
+  rename(ratio_2_1B_back = ratio_2_1B) %>%
+  rename(ratio_20A_back = ratio_20A) %>%
+  rename(ratio_20B_back = ratio_20B) %>%
+  rename(ratio_22A_back = ratio_22A) %>%
+  rename(ratio_22B_back = ratio_22B)
 
 subpool3_norm <- left_join(subpool3, backgrounds, by = 'background') %>%
-  mutate(ave_ratio_0_norm = ave_ratio_0/ave_ratio_0_back) %>%
-  mutate(ave_ratio_2_5_norm = ave_ratio_2_5/ave_ratio_2_5_back) %>%
-  mutate(ave_ratio_2_4_norm = ave_ratio_2_4/ave_ratio_2_4_back) %>%
-  mutate(ave_ratio_2_3_norm = ave_ratio_2_3/ave_ratio_2_3_back) %>%
-  mutate(ave_ratio_2_2_norm = ave_ratio_2_2/ave_ratio_2_2_back) %>%
-  mutate(ave_ratio_2_1_norm = ave_ratio_2_1/ave_ratio_2_1_back) %>%
-  mutate(ave_ratio_20_norm = ave_ratio_20/ave_ratio_20_back) %>%
-  mutate(ave_ratio_22_norm = ave_ratio_22/ave_ratio_22_back)
+  mutate(ratio_0A_norm = ratio_0A/ratio_0A_back) %>%
+  mutate(ratio_0B_norm = ratio_0B/ratio_0B_back) %>%
+  mutate(ave_ratio_0_norm = (ratio_0A_norm + ratio_0B_norm)/2) %>%
+  mutate(ratio_2_5A_norm = ratio_2_5A/ratio_2_5A_back) %>%
+  mutate(ratio_2_5B_norm = ratio_2_5B/ratio_2_5B_back) %>%
+  mutate(ave_ratio_2_5_norm = (ratio_2_5A_norm + ratio_2_5B_norm)/2) %>%
+  mutate(ratio_2_4A_norm = ratio_2_4A/ratio_2_4A_back) %>%
+  mutate(ratio_2_4B_norm = ratio_2_4B/ratio_2_4B_back) %>%
+  mutate(ave_ratio_2_4_norm = (ratio_2_4A_norm + ratio_2_4B_norm)/2) %>%
+  mutate(ratio_2_3A_norm = ratio_2_3A/ratio_2_3A_back) %>%
+  mutate(ratio_2_3B_norm = ratio_2_3B/ratio_2_3B_back) %>%
+  mutate(ave_ratio_2_3_norm = (ratio_2_3A_norm + ratio_2_3B_norm)/2) %>%
+  mutate(ratio_2_2A_norm = ratio_2_2A/ratio_2_2A_back) %>%
+  mutate(ratio_2_2B_norm = ratio_2_2B/ratio_2_2B_back) %>%
+  mutate(ave_ratio_2_2_norm = (ratio_2_2A_norm + ratio_2_2B_norm)/2) %>%
+  mutate(ratio_2_1A_norm = ratio_2_1A/ratio_2_1A_back) %>%
+  mutate(ratio_2_1B_norm = ratio_2_1B/ratio_2_1B_back) %>%
+  mutate(ave_ratio_2_1_norm = (ratio_2_1A_norm + ratio_2_1B_norm)/2) %>%
+  mutate(ratio_20A_norm = ratio_20A/ratio_20A_back) %>%
+  mutate(ratio_20B_norm = ratio_20B/ratio_20B_back) %>%
+  mutate(ave_ratio_20_norm = (ratio_20A_norm + ratio_20B_norm)/2) %>%
+  mutate(ratio_22A_norm = ratio_22A/ratio_22A_back) %>%
+  mutate(ratio_22B_norm = ratio_22B/ratio_22B_back) %>%
+  mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2)
+
+subpool3_log2_norm <- var_log2(subpool3_norm)
   
 
 #Plot subpool expression features-----------------------------------------------------------
 
 #Subpool 3
 
-p_subpool3_spa_back_norm <- ggplot(subpool3_norm, aes(x = dist)) + 
+p_subpool3_spa_back_norm <- ggplot(subpool3_log2_norm, aes(x = dist)) + 
   geom_point(aes(y = ave_ratio_0_norm), alpha = 0.5, size = 1.5, color = '#440154FF') +
   geom_point(aes(y = ave_ratio_2_5_norm), alpha = 0.5, size = 1.5, color = '#482677FF') +
   geom_point(aes(y = ave_ratio_2_4_norm), alpha = 0.5, size = 1.5, color = '#39568CFF') +
@@ -436,7 +442,7 @@ p_subpool3_spa_back_norm <- ggplot(subpool3_norm, aes(x = dist)) +
   geom_point(aes(y = ave_ratio_20_norm), alpha = 0.5, size = 1.5, color = '#73D055FF') +
   geom_point(aes(y = ave_ratio_22_norm), alpha = 0.5, size = 1.5, color = '#B8DE29FF') +
   facet_grid(spacing ~ background) + 
-  ylab('Normalized average log2 sum BC expression') + 
+  ylab('Log2 normalized average sum BC expression') + 
   panel_border() +
   background_grid(major = 'xy', minor = 'none') +
   scale_x_continuous(
@@ -444,6 +450,50 @@ p_subpool3_spa_back_norm <- ggplot(subpool3_norm, aes(x = dist)) +
     breaks = seq(from = 0, to = 150, by = 10))
 
 save_plot('plots/p_subpool3_spa_back_norm.png', p_subpool3_spa_back_norm, 
+          base_width = 46, base_height = 17, scale = 0.35)
+
+p_subpool3_spa_back_norm_smooth <- ggplot(subpool3_log2_norm, aes(x = dist)) + 
+  geom_point(aes(y = ave_ratio_0_norm), alpha = 0, size = 1.5, color = '#440154FF') +
+  geom_smooth(aes(y = ave_ratio_0_norm), 
+              span = 0.1, size = 0.7, color = '#440154FF', se = FALSE
+  ) +
+  geom_point(aes(y = ave_ratio_2_5_norm), alpha = 0, size = 1.5, color = '#482677FF') +
+  geom_smooth(aes(y = ave_ratio_2_5_norm), 
+              span = 0.1, size = 0.7, color = '#482677FF', se = FALSE
+  ) +
+  geom_point(aes(y = ave_ratio_2_4_norm), alpha = 0, size = 1.5, color = '#39568CFF') +
+  geom_smooth(aes(y = ave_ratio_2_4_norm), 
+              span = 0.1, size = 0.7, color = '#39568CFF', se = FALSE
+  ) +
+  geom_point(aes(y = ave_ratio_2_3_norm), alpha = 0, size = 1.5, color = '#2D708EFF') +
+  geom_smooth(aes(y = ave_ratio_2_3_norm), 
+              span = 0.1, size = 0.7, color = '#2D708EFF', se = FALSE
+  ) +
+  geom_point(aes(y = ave_ratio_2_2_norm), alpha = 0, size = 1.5, color = '#1F968BFF') +
+  geom_smooth(aes(y = ave_ratio_2_2_norm), 
+              span = 0.1, size = 0.7, color = '#1F968BFF', se = FALSE
+  ) +
+  geom_point(aes(y = ave_ratio_2_1_norm), alpha = 0, size = 1.5, color = '#29AF7FFF') +
+  geom_smooth(aes(y = ave_ratio_2_1_norm), 
+              span = 0.1, size = 0.7, color = '#29AF7FFF', se = FALSE
+  ) +
+  geom_point(aes(y = ave_ratio_20_norm), alpha = 0, size = 1.5, color = '#73D055FF') +
+  geom_smooth(aes(y = ave_ratio_20_norm), 
+              span = 0.1, size = 0.7, color = '#73D055FF', se = FALSE
+  ) +
+  geom_point(aes(y = ave_ratio_22_norm), alpha = 0, size = 1.5, color = '#B8DE29FF') +
+  geom_smooth(aes(y = ave_ratio_22_norm), 
+              span = 0.1, size = 0.7, color = '#B8DE29FF', se = FALSE
+  ) +
+  facet_grid(spacing ~ background) + 
+  ylab('Log2 normalized average sum BC expression') + 
+  panel_border() +
+  background_grid(major = 'xy', minor = 'none') +
+  scale_x_continuous(
+    "Distance from First Site to Proximal Promoter End (bp)", 
+    breaks = seq(from = 0, to = 150, by = 10))
+
+save_plot('plots/p_subpool3_spa_back_norm_smooth.png', p_subpool3_spa_back_norm_smooth, 
           base_width = 46, base_height = 17, scale = 0.35)
 
 
