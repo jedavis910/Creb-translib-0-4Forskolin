@@ -3,6 +3,8 @@ library(stringr)
 library(viridis)
 library(cowplot)
 library(ggExtra)
+library(modelr)
+library(lazyeval)
 
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
@@ -973,12 +975,111 @@ save_plot('plots/p_log10_var_rep_grid.png',
 
 #Comparison to integrated-------------------------------------------------------------------
 
+#Join datasets, log10 transform 
+
 int_back_norm_rep_1_2 <- read_tsv('../20171129_intLib/int_back_norm_rep_1_2.txt')
 
 int_trans <- left_join(int_back_norm_rep_1_2, trans_back_norm_rep_0_22, 
                        by = c('subpool', 'name', 'most_common', 'background'))
 
 log10_int_trans <- var_log10(int_trans)
+
+#Fitting a simple linear model predicting integrated from transient, fitting separately per
+#both background and subpool
+
+log10_int_trans_22 <- log10_int_trans %>%
+  select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm)
+
+lm_trans_int <- function(df) {
+  model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm, data = df)
+  return(model)
+}
+
+pre_res_trans_int <- function(df1, x) {
+  df2 <- df1 %>%
+    add_predictions(x)
+  df3 <- df2 %>%
+    add_residuals(x)
+  return(df3)
+  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
+}
+
+lm_s4_sp3 <- lm_trans_int(filter(log10_int_trans_22, 
+                                 background == 's pGl4', subpool == 'subpool3'))
+p_r_s4_sp3 <- pre_res_trans_int(filter(log10_int_trans_22, 
+                                       background == 's pGl4', subpool == 'subpool3'), 
+                                lm_s4_sp3)
+
+lm_v5_sp3 <- lm_trans_int(filter(log10_int_trans_22, 
+                                 background == 'v chr5', subpool == 'subpool3'))
+p_r_v5_sp3 <- pre_res_trans_int(filter(log10_int_trans_22, 
+                                       background == 'v chr5', subpool == 'subpool3'), 
+                                lm_v5_sp3)
+
+lm_v9_sp3 <- lm_trans_int(filter(log10_int_trans_22, 
+                                 background == 'v chr9', subpool == 'subpool3'))
+p_r_v9_sp3 <- pre_res_trans_int(filter(log10_int_trans_22, 
+                                       background == 'v chr9', subpool == 'subpool3'), 
+                                lm_v9_sp3)
+
+lm_s4_sp5 <- lm_trans_int(filter(log10_int_trans_22, 
+                                 background == 's pGl4', subpool == 'subpool5'))
+p_r_s4_sp5 <- pre_res_trans_int(filter(log10_int_trans_22, 
+                                       background == 's pGl4', subpool == 'subpool5'), 
+                                lm_s4_sp5)
+
+lm_v5_sp5 <- lm_trans_int(filter(log10_int_trans_22, 
+                                 background == 'v chr5', subpool == 'subpool5'))
+p_r_v5_sp5 <- pre_res_trans_int(filter(log10_int_trans_22, 
+                                       background == 'v chr5', subpool == 'subpool5'), 
+                                lm_v5_sp5)
+
+lm_v9_sp5 <- lm_trans_int(filter(log10_int_trans_22, 
+                                 background == 'v chr9', subpool == 'subpool5'))
+p_r_v9_sp5 <- pre_res_trans_int(filter(log10_int_trans_22, 
+                                       background == 'v chr9', subpool == 'subpool5'), 
+                                lm_v9_sp5)
+
+#Not sure if it's easier to form lm according to each subset in a single function or to do
+#it separately as shown and then bind all the rows to allow easy faceting in graphs
+
+p_r_bg_sp <- rbind(p_r_s4_sp3, p_r_s4_sp5, p_r_v5_sp3, p_r_v5_sp5, p_r_v9_sp3, p_r_v9_sp5)
+
+#Graph model over data
+
+p_lm_int_trans_bg_sp <- ggplot(p_r_sp, aes(x = ave_ratio_22_norm)) +
+  facet_grid(background ~ subpool) +
+  geom_point(aes(y = ave_med_ratio_norm), alpha = 0.2) +
+  geom_line(aes(y = pred), color = 'red') +
+  annotation_logticks(scaled = TRUE) +
+  ylab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
+  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
+  panel_border()
+
+save_plot('plots/p_lm_int_trans_bg_sp.png', p_lm_int_trans_bg_sp,
+          base_width = 7, base_height = 9.5)
+
+p_res_int_trans_bg_sp <- ggplot(p_r_bg_sp, aes(ave_ratio_22_norm, resid)) +
+  facet_grid(background ~ subpool) +
+  geom_point(alpha = 0.2) +
+  geom_ref_line(h = 0, colour = 'black', size = 1) +
+  annotation_logticks(scaled = TRUE, sides = 'b') +
+  ylab("Residuals") +
+  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
+  panel_border()
+
+save_plot('plots/p_res_int_trans_bg_sp.png', p_res_int_trans_bg_sp, 
+          base_width = 7, base_height = 5)
+
+coef(lm_s4_sp3)
+
+#can I figure out a way to label each graph with it's corresponding f-value?
+
+test <- anova(lm_s4_sp3) %>%
+  filter(Df == 1) %>%
+  select(4,5)
+  mutate(background = 's pGl4') %>%
+  mutate(subpool = 'subpool3')
 
 #Plot comparisons between trans concentrations and integrated
 
@@ -1402,63 +1503,6 @@ save_plot('plots/p_var_log10_int_trans_grid.png',
           p_var_log10_int_trans_grid, base_height = 12, base_width = 12)
 
 save_plot('plots/p_var_log10_int_trans_22.png', p_var_log10_int_trans_22)
-
-
-p_var_log10_int_trans_22_back <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_22_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_abline(slope = 1, intercept = 0.01) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) +
-  facet_grid(. ~ background)
-
-p_var_log10_int_trans_22_back_sp <- ggplot(NULL,aes(ave_med_ratio_norm, ave_ratio_22_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_abline(slope = 1, intercept = 0.01) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) +
-  facet_grid(subpool ~ background)
-
-save_plot('plots/p_var_log10_int_trans_22_back.png', p_var_log10_int_trans_22_back,
-          base_width = 10, base_height = 4)
-
-save_plot('plots/p_var_log10_int_trans_22_back_sp.png', p_var_log10_int_trans_22_back_sp,
-          base_width = 10, base_height = 7)
-
-
-
-
 
 
 #Negatives plots----------------------------------------------------------------------------
