@@ -5,6 +5,7 @@ library(cowplot)
 library(ggExtra)
 library(modelr)
 library(lazyeval)
+library(splines)
 
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
@@ -39,10 +40,10 @@ bc_R22B <- read_tsv('BCreads_txts/R22B_BC.txt')
 #Load barcode mapping table, remember sequences are rcomp due to sequencing format
 
 barcode_map <- read_tsv('../../BCMap/uniqueSP2345.txt', 
-                 col_names = c(
-                   'fluff', 'barcode', 'name', 'most_common'
-                   ), 
-                 skip = 1) %>%
+                        col_names = c(
+                          'fluff', 'barcode', 'name', 'most_common'
+                        ), 
+                        skip = 1) %>%
   select(-fluff)
 
 
@@ -175,7 +176,7 @@ RNA_DNA_22A <- var_expression(variant_counts_DNA, variant_counts_R22A)
 RNA_DNA_22B <- var_expression(variant_counts_DNA, variant_counts_R22B)
 
 
-#combine biological replicates, normalize to background---------------------------------------
+#combine biological replicates---------------------------------------------------------------
 
 #After combining, rename backgrounds to simplified names, make background column (excluding 
 #controls), separate out background values in each dataset and left join to original dataset.
@@ -272,6 +273,8 @@ rep_0_22_A_B <- var_conc_rep(RNA_DNA_0A, RNA_DNA_0B, RNA_DNA_2_5A, RNA_DNA_2_5B,
                              RNA_DNA_2_4A, RNA_DNA_2_4B, RNA_DNA_2_3A, RNA_DNA_2_3B,
                              RNA_DNA_2_2A, RNA_DNA_2_2B, RNA_DNA_2_1A, RNA_DNA_2_1B,
                              RNA_DNA_20A, RNA_DNA_20B, RNA_DNA_22A, RNA_DNA_22B)
+
+#Normalize to background--------------------------------------------------------------------
 
 #Ideally would have put this earlier as there are so many columns to modify, but normalizing
 #to backgrounds excludes the controls, so I would have to repeat the code for the controls...
@@ -988,11 +991,13 @@ log10_int_trans <- var_log10(int_trans)
 #both background and subpool
 
 log10_int_trans_22 <- log10_int_trans %>%
-  select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm)
+  select(subpool, name, background, barcodes_br1, barcodes_br2, ave_med_ratio_norm, 
+         barcodes_DNA, barcodes_RNA_22A, barcodes_RNA_22B, ave_ratio_22_norm) %>%
+  mutate(ave_int_barcode = (barcodes_br1 + barcodes_br2)/2) %>%
+  mutate(ave_RNA_22A_barcodes = (barcodes_RNA_22A + barcodes_RNA_22B)/2)
 
 lm_trans_int <- function(df) {
   model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm, data = df)
-  return(model)
 }
 
 pre_res_trans_int <- function(df1, x) {
@@ -1004,74 +1009,76 @@ pre_res_trans_int <- function(df1, x) {
   print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
 }
 
-lm_s4_sp3 <- lm_trans_int(filter(log10_int_trans_22, 
-                                 background == 's pGl4', subpool == 'subpool3'))
-p_r_s4_sp3 <- pre_res_trans_int(filter(log10_int_trans_22, 
-                                       background == 's pGl4', subpool == 'subpool3'), 
-                                lm_s4_sp3)
+#testing a simple linear model
 
-lm_v5_sp3 <- lm_trans_int(filter(log10_int_trans_22, 
-                                 background == 'v chr5', subpool == 'subpool3'))
-p_r_v5_sp3 <- pre_res_trans_int(filter(log10_int_trans_22, 
-                                       background == 'v chr5', subpool == 'subpool3'), 
-                                lm_v5_sp3)
+lm_all <- lm_trans_int(log10_int_trans_22)
+p_r_all <- pre_res_trans_int(log10_int_trans_22, lm_all)
 
-lm_v9_sp3 <- lm_trans_int(filter(log10_int_trans_22, 
-                                 background == 'v chr9', subpool == 'subpool3'))
-p_r_v9_sp3 <- pre_res_trans_int(filter(log10_int_trans_22, 
-                                       background == 'v chr9', subpool == 'subpool3'), 
-                                lm_v9_sp3)
-
-lm_s4_sp5 <- lm_trans_int(filter(log10_int_trans_22, 
-                                 background == 's pGl4', subpool == 'subpool5'))
-p_r_s4_sp5 <- pre_res_trans_int(filter(log10_int_trans_22, 
-                                       background == 's pGl4', subpool == 'subpool5'), 
-                                lm_s4_sp5)
-
-lm_v5_sp5 <- lm_trans_int(filter(log10_int_trans_22, 
-                                 background == 'v chr5', subpool == 'subpool5'))
-p_r_v5_sp5 <- pre_res_trans_int(filter(log10_int_trans_22, 
-                                       background == 'v chr5', subpool == 'subpool5'), 
-                                lm_v5_sp5)
-
-lm_v9_sp5 <- lm_trans_int(filter(log10_int_trans_22, 
-                                 background == 'v chr9', subpool == 'subpool5'))
-p_r_v9_sp5 <- pre_res_trans_int(filter(log10_int_trans_22, 
-                                       background == 'v chr9', subpool == 'subpool5'), 
-                                lm_v9_sp5)
-
-#Not sure if it's easier to form lm according to each subset in a single function or to do
-#it separately as shown and then bind all the rows to allow easy faceting in graphs
-
-p_r_bg_sp <- rbind(p_r_s4_sp3, p_r_s4_sp5, p_r_v5_sp3, p_r_v5_sp5, p_r_v9_sp3, p_r_v9_sp5)
-
-#Graph model over data
-
-p_lm_int_trans_bg_sp <- ggplot(p_r_sp, aes(x = ave_ratio_22_norm)) +
+p_nl_int_trans <- ggplot(p_r_all, aes(x = ave_ratio_22_norm)) +
   facet_grid(background ~ subpool) +
-  geom_point(aes(y = ave_med_ratio_norm), alpha = 0.2) +
+  geom_point(aes(y = ave_med_ratio_norm, color = ave_int_barcode), alpha = 0.5) +
+  scale_color_viridis() +
   geom_line(aes(y = pred), color = 'red') +
   annotation_logticks(scaled = TRUE) +
   ylab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
   xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
   panel_border()
 
-save_plot('plots/p_lm_int_trans_bg_sp.png', p_lm_int_trans_bg_sp,
-          base_width = 7, base_height = 9.5)
-
-p_res_int_trans_bg_sp <- ggplot(p_r_bg_sp, aes(ave_ratio_22_norm, resid)) +
+p_nl_res_int_trans_bg_sp <- ggplot(p_r_all, aes(ave_ratio_22_norm, resid)) +
   facet_grid(background ~ subpool) +
-  geom_point(alpha = 0.2) +
+  geom_point(aes(color = ave_int_barcode), alpha = 0.5) +
+  scale_color_viridis() +
   geom_ref_line(h = 0, colour = 'black', size = 1) +
   annotation_logticks(scaled = TRUE, sides = 'b') +
   ylab("Residuals") +
   xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
   panel_border()
 
-save_plot('plots/p_res_int_trans_bg_sp.png', p_res_int_trans_bg_sp, 
-          base_width = 7, base_height = 5)
 
-coef(lm_s4_sp3)
+#Testing nl model fit with background as a categorical variable
+
+#package used for robust lm, don't keep unless you need this model, screws up select function
+
+lm_trans_int_exp_bgind <- function(df) {
+  model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm + background, data = df)
+  return(model)
+}
+
+lm_trans_int_exp_bgdep <- function(df) {
+  model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm * background, data = df)
+  return(model)
+}
+
+lm_exp_bgind <- lm_trans_int_exp_bgind(log10_int_trans_22)
+p_r_exp_bgind <- pre_res_trans_int(log10_int_trans_22, lm_exp_bgind)
+
+lm_exp_bgdep <- lm_trans_int_exp_bgdep(log10_int_trans_22)
+p_r_exp_bgdep <- pre_res_trans_int(log10_int_trans_22, lm_exp_bgdep)
+
+p_exp_bg_int_trans <- ggplot(p_r_exp_bgdep, aes(x = ave_ratio_22_norm)) +
+  facet_grid(subpool ~ background) +
+  geom_point(aes(y = ave_med_ratio_norm), alpha = 0.5) +
+  geom_line(aes(y = pred), color = 'red') +
+  annotation_logticks(scaled = TRUE) +
+  ylab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
+  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
+  panel_border()
+
+p_res_int_trans_exp_bg <- ggplot(p_r_exp_bgdep, aes(ave_ratio_22_norm, resid)) +
+  facet_grid(subpool ~ background) +
+  geom_point(aes(color = ave_int_barcode), alpha = 0.5) +
+  scale_color_viridis() +
+  geom_ref_line(h = 0, colour = 'black', size = 1) +
+  annotation_logticks(scaled = TRUE, sides = 'b') +
+  ylab("Residuals") +
+  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
+  panel_border()
+
+save_plot('plots/p_exp_bg_int_trans.png', p_exp_bg_int_trans,
+          base_width = 10, base_height = 7)
+
+save_plot('plots/p_res_int_trans_exp_bg.png', p_res_int_trans_exp_bg,
+          base_width = 13, base_height = 7)
 
 #can I figure out a way to label each graph with it's corresponding f-value?
 
