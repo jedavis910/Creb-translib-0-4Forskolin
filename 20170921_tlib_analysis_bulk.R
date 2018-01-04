@@ -1014,8 +1014,8 @@ pre_res_trans_int <- function(df1, x) {
 lm_all <- lm_trans_int(log10_int_trans_22)
 p_r_all <- pre_res_trans_int(log10_int_trans_22, lm_all)
 
-p_nl_int_trans <- ggplot(p_r_all, aes(x = ave_ratio_22_norm)) +
-  facet_grid(background ~ subpool) +
+p_lm_int_trans <- ggplot(p_r_all, aes(x = ave_ratio_22_norm)) +
+  facet_grid(subpool ~ background) +
   geom_point(aes(y = ave_med_ratio_norm, color = ave_int_barcode), alpha = 0.5) +
   scale_color_viridis() +
   geom_line(aes(y = pred), color = 'red') +
@@ -1024,47 +1024,9 @@ p_nl_int_trans <- ggplot(p_r_all, aes(x = ave_ratio_22_norm)) +
   xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
   panel_border()
 
-p_nl_res_int_trans_bg_sp <- ggplot(p_r_all, aes(ave_ratio_22_norm, resid)) +
-  facet_grid(background ~ subpool) +
-  geom_point(aes(color = ave_int_barcode), alpha = 0.5) +
-  scale_color_viridis() +
-  geom_ref_line(h = 0, colour = 'black', size = 1) +
-  annotation_logticks(scaled = TRUE, sides = 'b') +
-  ylab("Residuals") +
-  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  panel_border()
+save_plot('plots/p_lm_int_trans.png', p_lm_int_trans, base_width = 10, base_height = 7)
 
-
-#Testing nl model fit with background as a categorical variable
-
-#package used for robust lm, don't keep unless you need this model, screws up select function
-
-lm_trans_int_exp_bgind <- function(df) {
-  model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm + background, data = df)
-  return(model)
-}
-
-lm_trans_int_exp_bgdep <- function(df) {
-  model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm * background, data = df)
-  return(model)
-}
-
-lm_exp_bgind <- lm_trans_int_exp_bgind(log10_int_trans_22)
-p_r_exp_bgind <- pre_res_trans_int(log10_int_trans_22, lm_exp_bgind)
-
-lm_exp_bgdep <- lm_trans_int_exp_bgdep(log10_int_trans_22)
-p_r_exp_bgdep <- pre_res_trans_int(log10_int_trans_22, lm_exp_bgdep)
-
-p_exp_bg_int_trans <- ggplot(p_r_exp_bgdep, aes(x = ave_ratio_22_norm)) +
-  facet_grid(subpool ~ background) +
-  geom_point(aes(y = ave_med_ratio_norm), alpha = 0.5) +
-  geom_line(aes(y = pred), color = 'red') +
-  annotation_logticks(scaled = TRUE) +
-  ylab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  panel_border()
-
-p_res_int_trans_exp_bg <- ggplot(p_r_exp_bgdep, aes(ave_ratio_22_norm, resid)) +
+p_res_int_trans <- ggplot(p_r_all, aes(ave_ratio_22_norm, resid)) +
   facet_grid(subpool ~ background) +
   geom_point(aes(color = ave_int_barcode), alpha = 0.5) +
   scale_color_viridis() +
@@ -1074,19 +1036,126 @@ p_res_int_trans_exp_bg <- ggplot(p_r_exp_bgdep, aes(ave_ratio_22_norm, resid)) +
   xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
   panel_border()
 
-save_plot('plots/p_exp_bg_int_trans.png', p_exp_bg_int_trans,
-          base_width = 10, base_height = 7)
+save_plot('plots/p_res_int_trans.png', p_res_int_trans, base_width = 13, base_height = 7)
 
-save_plot('plots/p_res_int_trans_exp_bg.png', p_res_int_trans_exp_bg,
-          base_width = 13, base_height = 7)
+p_res_int_trans_sp <- ggplot(p_r_all, aes(x = subpool, y = resid)) +
+  facet_grid(. ~ background) +
+  geom_boxplot(alpha = 0.5) +
+  geom_ref_line(h = 0, colour = 'black', size = 1) +
+  ylab("Residuals") +
+  xlab("Subpool") +
+  panel_border()
 
-#can I figure out a way to label each graph with it's corresponding f-value?
+#Analyze differences between transient and integrated using features within each subpool
 
-test <- anova(lm_s4_sp3) %>%
-  filter(Df == 1) %>%
-  select(4,5)
-  mutate(background = 's pGl4') %>%
-  mutate(subpool = 'subpool3')
+subpool3_int_trans <- 
+  filter(p_r_all, subpool == "subpool3") %>%
+  ungroup () %>%
+  select(-subpool) %>%
+  mutate(name = gsub('2BS ', '', name), 
+         name = gsub(' bp spacing ', '_', name)) %>%
+  separate(name, 
+           into = c("subpool", "spacing", "fluff2", "fluff3", "dist", "fluff4"),
+           sep = "_", convert = TRUE
+  ) %>%
+  select(-subpool, -fluff2, -fluff3, -fluff4) %>%
+  mutate(dist = as.integer(dist + 2)) %>%
+  mutate(spacing = 
+           ifelse(spacing != as.integer(0), 
+                  as.integer(spacing + 4), as.integer(spacing))) 
+
+subpool5_int_trans <- 
+  filter(p_r_all, subpool == "subpool5") %>%
+  ungroup () %>%
+  select(-subpool) %>%
+  mutate(name = gsub('no_site', 'nosite', name)) %>%
+  separate(name, into = c(
+    "subpool", "site1", "site2", "site3", "site4", "site5", "site6", 
+    "fluff"), sep = "_"
+  ) %>%
+  select(-subpool, -fluff) %>%
+  mutate(consensus = str_detect(site1, "consensus") + 
+           str_detect(site2, "consensus") + 
+           str_detect(site3, "consensus") + 
+           str_detect(site4, "consensus") + 
+           str_detect(site5, "consensus") + 
+           str_detect(site6, "consensus")) %>%
+  mutate(weak = str_detect(site1, "weak") +
+           str_detect(site2, "weak") +
+           str_detect(site3, "weak") +
+           str_detect(site4, "weak") +
+           str_detect(site5, "weak") +
+           str_detect(site6, "weak")) %>%
+  mutate(nosite = str_detect(site1, "nosite") +
+           str_detect(site2, "nosite") +
+           str_detect(site3, "nosite") +
+           str_detect(site4, "nosite") +
+           str_detect(site5, "nosite") +
+           str_detect(site6, "nosite")) %>%
+  mutate(total_sites = consensus + weak) %>%
+  mutate(site_combo = 
+           ifelse(weak == 0 & consensus > 0, 
+                  'consensus', 'mixed')) %>%
+  mutate(site_type = 
+           ifelse(consensus == 0 & weak > 0, 
+                  'weak', site_combo))
+
+#plot subpool features vs. residuals between transient to integrated model
+
+p_subpool3_spa_dist_int_trans_resid <- ggplot(subpool3_int_trans, aes(dist, resid)) + 
+  geom_point(alpha = 0.5) +
+  facet_grid(spacing ~ background) + 
+  ylab('Residuals') + 
+  panel_border() +
+  background_grid(major = 'xy', minor = 'none') +
+  geom_ref_line(h = 0, colour = 'black', size = 1) +
+  scale_x_continuous(
+    "Distance from First Site to Proximal Promoter End (bp)", 
+    breaks = seq(from = 0, to = 150, by = 10)) 
+
+p_subpool5_total_int_trans_consw_resid <- ggplot(subpool5_int_trans, 
+                                           aes(as.factor(consensus), resid)) +
+  geom_ref_line(h = 0, colour = 'black', size = 1) +
+  geom_boxplot() +
+  scale_color_viridis() +
+  facet_grid(. ~ background) +
+  xlab('Number of consensus binding sites') +
+  scale_y_continuous('Residual', limits = c(-4, 4)) +
+  panel_border()
+
+save_plot('plots/p_subpool5_total_int_trans_consw_resid.png', 
+          p_subpool5_total_int_trans_consw_resid,
+          base_width = 6, base_height = 4)
+
+p_subpool5_total_int_trans_cons_resid <- ggplot(filter(subpool5_int_trans, weak == 0), 
+                                           aes(as.factor(consensus), resid)) +
+  geom_ref_line(h = 0, colour = 'black', size = 1) +
+  geom_boxplot() +
+  scale_color_viridis() +
+  facet_grid(. ~ background) +
+  xlab('Number of consensus binding sites') +
+  scale_y_continuous('Residual', limits = c(-4, 4)) +
+  panel_border()
+
+save_plot('plots/p_subpool5_total_int_trans_cons_resid.png', 
+          p_subpool5_total_int_trans_cons_resid,
+          base_width = 6, base_height = 4)
+
+p_subpool5_total_int_trans_weak_resid <- ggplot(filter(subpool5_int_trans, consensus == 0), 
+                                                aes(as.factor(weak), resid)) +
+  geom_ref_line(h = 0, colour = 'black', size = 1) +
+  geom_boxplot() +
+  scale_color_viridis() +
+  facet_grid(. ~ background) +
+  xlab('Number of weak binding sites') +
+  scale_y_continuous('Residual', limits = c(-4, 4)) +
+  panel_border()
+
+save_plot('plots/p_subpool5_total_int_trans_weak_resid.png', 
+          p_subpool5_total_int_trans_weak_resid,
+          base_width = 6, base_height = 4)
+
+
 
 #Plot comparisons between trans concentrations and integrated
 
