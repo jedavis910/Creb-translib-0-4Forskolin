@@ -341,102 +341,6 @@ back_norm <- function(df1) {
 trans_back_norm_rep_0_22 <- back_norm(rep_0_22_A_B)
 
 
-#Combine and compare expression across a different set of concentrations--------------------
-
-trans_back_norm_rep_0_64 <- read_tsv('../20170630_tlib/trans_back_norm_rep_0_64.txt')
-
-#Compare background-normalized expression at conc 1 and 4 µM that were tested in both 
-#experiments
-
-conc_1_4_comp <- function(df1, df2) {
-  two_df <- inner_join(df1, df2, by = '')
-}
-
-
-
-
-#Make df with concentration and background-normalized expression as a variable---------------
-
-var_conc_exp <- function(df) {
-  df_0 <- df %>%
-    mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_0, ave_ratio_0_norm) %>%
-    mutate(conc = 2^-7) %>%
-    rename(ave_ratio_norm = ave_ratio_0_norm) %>%
-    rename(ave_barcode = ave_barcode_0)
-  df_2_5 <- df %>%
-    mutate(ave_barcode_2_5 = (barcodes_RNA_2_5A + barcodes_RNA_2_5B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_2_5, ave_ratio_2_5_norm) %>%
-    mutate(conc = 2^-5) %>%
-    rename(ave_ratio_norm = ave_ratio_2_5_norm) %>%
-    rename(ave_barcode = ave_barcode_2_5)
-  df_2_4 <- df %>%
-    mutate(ave_barcode_2_4 = (barcodes_RNA_2_4A + barcodes_RNA_2_4B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_2_4, ave_ratio_2_4_norm) %>%
-    mutate(conc = 2^-4) %>%
-    rename(ave_ratio_norm = ave_ratio_2_4_norm) %>%
-    rename(ave_barcode = ave_barcode_2_4)
-  df_2_3 <- df %>%
-    mutate(ave_barcode_2_3 = (barcodes_RNA_2_3A + barcodes_RNA_2_3B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_2_3, ave_ratio_2_3_norm) %>%
-    mutate(conc = 2^-3) %>%
-    rename(ave_ratio_norm = ave_ratio_2_3_norm) %>%
-    rename(ave_barcode = ave_barcode_2_3)
-  df_2_2 <- df %>%
-    mutate(ave_barcode_2_2 = (barcodes_RNA_2_2A + barcodes_RNA_2_2B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_2_2, ave_ratio_2_2_norm) %>%
-    mutate(conc = 2^-2) %>%
-    rename(ave_ratio_norm = ave_ratio_2_2_norm) %>%
-    rename(ave_barcode = ave_barcode_2_2)
-  df_2_1 <- df %>%
-    mutate(ave_barcode_2_1 = (barcodes_RNA_2_1A + barcodes_RNA_2_1B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_2_1, ave_ratio_2_1_norm) %>%
-    mutate(conc = 2^-1) %>%
-    rename(ave_ratio_norm = ave_ratio_2_1_norm) %>%
-    rename(ave_barcode = ave_barcode_2_1)
-  df_20 <- df %>%
-    mutate(ave_barcode_20 = (barcodes_RNA_20A + barcodes_RNA_20B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_20, ave_ratio_20_norm) %>%
-    mutate(conc = 2^0) %>%
-    rename(ave_ratio_norm = ave_ratio_20_norm) %>%
-    rename(ave_barcode = ave_barcode_20)
-  df_22 <- df %>%
-    mutate(ave_barcode_22 = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
-    select(subpool, name, most_common, ave_barcode_22, ave_ratio_22_norm) %>%
-    mutate(conc = 2^2) %>%
-    rename(ave_ratio_norm = ave_ratio_22_norm) %>%
-    rename(ave_barcode = ave_barcode_22)
-  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, df_22) %>%
-    filter(conc != as.integer(0)) %>%
-    mutate(conc = log2(conc))
-  return(df_0_22)
-}
-
-trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
-
-subset_5 <- trans_back_norm_conc %>%
-  filter(subpool == 'subpool5') %>%
-  group_by(name) %>%
-  nest() %>%
-  sample_n(25) %>%
-  unnest()
-
-ggplot(subset_5, aes(conc, ave_ratio_norm, color = name)) +
-  geom_point(show.legend = FALSE) +
-  geom_line(show.legend = FALSE)
-
-subset_3 <- trans_back_norm_conc %>%
-  filter(subpool == 'subpool3') %>%
-  group_by(name) %>%
-  nest() %>%
-  sample_n(50) %>%
-  unnest()
-
-ggplot(subset_3, aes(conc, ave_ratio_norm, color = name)) +
-  geom_point(show.legend = FALSE) +
-  geom_line(show.legend = FALSE)
-
-
 #determine the log(RNA/DNA) for each sample (this takes the log of sum_RNA and sum_DNA 
 #as well). Log2 is useful for replicate plots for expression and log10 is useful for barcode
 #read analysis. This is useful for replicate plots, but further manipulations should use 
@@ -1677,6 +1581,208 @@ save_plot('plots/p_var_log10_int_trans_grid.png',
 save_plot('plots/p_var_log10_int_trans_22.png', p_var_log10_int_trans_22)
 
 
+#Make df with concentration and background-normalized expression as a variable---------------
+
+var_conc_exp <- function(df) {
+  df_0 <- df %>%
+    mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_0, ave_ratio_0_norm) %>%
+    mutate(conc = 2^-7) %>%
+    rename(ave_ratio_norm = ave_ratio_0_norm) %>%
+    rename(ave_barcode = ave_barcode_0)
+  df_2_5 <- df %>%
+    mutate(ave_barcode_2_5 = (barcodes_RNA_2_5A + barcodes_RNA_2_5B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_5, ave_ratio_2_5_norm) %>%
+    mutate(conc = 2^-5) %>%
+    rename(ave_ratio_norm = ave_ratio_2_5_norm) %>%
+    rename(ave_barcode = ave_barcode_2_5)
+  df_2_4 <- df %>%
+    mutate(ave_barcode_2_4 = (barcodes_RNA_2_4A + barcodes_RNA_2_4B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_4, ave_ratio_2_4_norm) %>%
+    mutate(conc = 2^-4) %>%
+    rename(ave_ratio_norm = ave_ratio_2_4_norm) %>%
+    rename(ave_barcode = ave_barcode_2_4)
+  df_2_3 <- df %>%
+    mutate(ave_barcode_2_3 = (barcodes_RNA_2_3A + barcodes_RNA_2_3B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_3, ave_ratio_2_3_norm) %>%
+    mutate(conc = 2^-3) %>%
+    rename(ave_ratio_norm = ave_ratio_2_3_norm) %>%
+    rename(ave_barcode = ave_barcode_2_3)
+  df_2_2 <- df %>%
+    mutate(ave_barcode_2_2 = (barcodes_RNA_2_2A + barcodes_RNA_2_2B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_2, ave_ratio_2_2_norm) %>%
+    mutate(conc = 2^-2) %>%
+    rename(ave_ratio_norm = ave_ratio_2_2_norm) %>%
+    rename(ave_barcode = ave_barcode_2_2)
+  df_2_1 <- df %>%
+    mutate(ave_barcode_2_1 = (barcodes_RNA_2_1A + barcodes_RNA_2_1B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_1, ave_ratio_2_1_norm) %>%
+    mutate(conc = 2^-1) %>%
+    rename(ave_ratio_norm = ave_ratio_2_1_norm) %>%
+    rename(ave_barcode = ave_barcode_2_1)
+  df_20 <- df %>%
+    mutate(ave_barcode_20 = (barcodes_RNA_20A + barcodes_RNA_20B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_20, ave_ratio_20_norm) %>%
+    mutate(conc = 2^0) %>%
+    rename(ave_ratio_norm = ave_ratio_20_norm) %>%
+    rename(ave_barcode = ave_barcode_20)
+  df_22 <- df %>%
+    mutate(ave_barcode_22 = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_22, ave_ratio_22_norm) %>%
+    mutate(conc = 2^2) %>%
+    rename(ave_ratio_norm = ave_ratio_22_norm) %>%
+    rename(ave_barcode = ave_barcode_22)
+  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, df_22)
+  return(df_0_22)
+}
+
+#Hill plots---------------------------------------------------------------------------------
+
+#Make untidy data with expression and concentration as variables
+
+trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22) %>%
+  filter(subpool == 'subpool5') %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest() %>%
+  sample_n(1)
+
+hill_log <- trans_back_norm_conc %>%
+  unnest() %>%
+  mutate(conc = log2(conc) + 8) %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest()
+
+ggplot(unnest(trans_back_norm_conc), aes(conc, ave_ratio_norm, color = name)) +
+  geom_point(show.legend = FALSE) +
+  geom_line(show.legend = FALSE)
+
+#Fit nested dataframe of variant expression across concentrations to Hill equations
+
+hill <- function(df) {
+  n_init <- 1
+  c_half_max_init <- 1
+  hill_nls <- nls(
+    ave_ratio_norm ~ ((max(ave_ratio_norm) * conc^n) / (c_half_max + conc^n)), 
+    data = df, start = c(n = n_init, c_half_max = c_half_max_init)
+  )
+  return(hill_nls)
+}
+
+trans_back_norm_conc_hill <- trans_back_norm_conc %>%
+  mutate(hill_fit = map(trans_back_norm_conc$data, hill)) %>%
+  mutate(hill_pred = map2(data, hill_fit, add_predictions)) %>%
+  mutate(hill_resids = map2(data, hill_fit, add_residuals))
+
+test_predictions <- unnest(trans_back_norm_conc_hill, hill_pred)
+
+trans_back_norm_conc_hill$hill_fit[[1]]
+
+ggplot(data = NULL, aes(x = conc)) +
+  geom_point(data = unnest(trans_back_norm_conc), aes(y = ave_ratio_norm), 
+             color = 'black', show.legend = FALSE) +
+  geom_line(data = unnest(trans_back_norm_conc), 
+            aes(y = ave_ratio_norm, linetype = name), color = 'black', show.legend = FALSE) +
+  geom_point(data = test_predictions, aes(y = pred), 
+             color = 'red', show.legend = FALSE, alpha = 0.5) +
+  geom_line(data = test_predictions, aes(y = pred, linetype = name), color = 'red', 
+            show.legend = FALSE, alpha = 0.5) +
+  xlab('Forskolin µM') + ylab('Average norm. expr.')
+
+
+#Combine and compare expression across a different set of concentrations--------------------
+
+trans_back_norm_rep_0_64 <- read_tsv('../20170630_tlib/trans_back_norm_rep_0_64.txt')
+
+#Compare background-normalized expression at conc 0, 1 and 4 µM that were tested in both 
+#experiments
+
+conc_0_1_4_comp <- function(df1, df2) {
+  two_df <- inner_join(df1, df2, by = c('subpool', 'name', 'most_common', 'background'),
+                       suffix = c('_0921', '_0631')) %>%
+    select(subpool, name, most_common, background, ave_ratio_0_norm_0921, 
+           ave_ratio_0_norm_0631, ave_ratio_20_norm, ave_ratio_1_norm, ave_ratio_22_norm,
+           ave_ratio_4_norm) %>%
+    rename(ave_ratio_1_norm_0921 = ave_ratio_20_norm) %>%
+    rename(ave_ratio_1_norm_0631 = ave_ratio_1_norm) %>%
+    rename(ave_ratio_4_norm_0921 = ave_ratio_22_norm) %>%
+    rename(ave_ratio_4_norm_0631 = ave_ratio_4_norm)
+}
+
+trans_back_norm_comp_0921_0631 <- conc_0_1_4_comp(
+  trans_back_norm_rep_0_22, trans_back_norm_rep_0_64) %>%
+  var_log10()
+
+trans_comp_lm_0 <- lm(ave_ratio_0_norm_0921 ~ ave_ratio_0_norm_0631, 
+                      data = trans_back_norm_comp_0921_0631)
+
+trans_comp_lm_1 <- lm(ave_ratio_1_norm_0921 ~ ave_ratio_1_norm_0631, 
+                      data = trans_back_norm_comp_0921_0631)
+
+trans_comp_lm_4 <- lm(ave_ratio_4_norm_0921 ~ ave_ratio_4_norm_0631, 
+                      data = trans_back_norm_comp_0921_0631)
+
+pre_res_trans_int <- function(df1, x) {
+  df2 <- df1 %>%
+    add_predictions(x)
+  df3 <- df2 %>%
+    add_residuals(x)
+  return(df3)
+  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
+}
+
+trans_comp_p_r_0 <- pre_res_trans_int(trans_back_norm_comp_0921_0631, trans_comp_lm_0)
+
+trans_comp_p_r_1 <- pre_res_trans_int(trans_back_norm_comp_0921_0631, trans_comp_lm_1)
+
+trans_comp_p_r_4 <- pre_res_trans_int(trans_back_norm_comp_0921_0631, trans_comp_lm_4)
+
+p_corr_0921_0631_0 <- ggplot(data = NULL, aes(ave_ratio_0_norm_0921, ave_ratio_0_norm_0631,
+                                              color = subpool)) +
+  geom_point(data = filter(trans_back_norm_comp_0921_0631, subpool == 'subpool5'),
+             color = '#482677FF', alpha = 0.2) +
+  geom_point(data = filter(trans_back_norm_comp_0921_0631, subpool == 'subpool3'),
+             color = '#2D708EFF', alpha = 0.2) +
+  geom_density2d(data = trans_back_norm_comp_0921_0631,
+                 alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
+  annotation_logticks(scaled = TRUE) +
+  xlab("Ave log10 variant norm.\nsum RNA/DNA 170921") +
+  ylab("Ave log10 variant norm.\nsum RNA/DNA 170631") +
+  scale_x_continuous(breaks = c(0, 1, 2, 3, 4, 5, 6, 7), 
+                     limits = c(-0.5, 7.5)) + 
+  scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5, 6, 7), 
+                     limits = c(-0.5, 7.5)) + 
+  annotate("text", x = 1, y = 6,
+           label = paste('r =', round(
+             cor(
+               trans_back_norm_comp_0921_0631$ave_ratio_0_norm_0921, 
+               trans_back_norm_comp_0921_0631$ave_ratio_0_norm_0631,
+               use = "pairwise.complete.obs", method = "pearson"
+             ), 2
+           )
+           )
+  ) +
+  annotate("text", x = 1, y = 5, color = '#2D708EFF',
+           label = paste('r =', round(
+             cor(
+               filter(trans_back_norm_comp_0921_0631, subpool == 'subpool3')$ave_ratio_0_norm_0921, 
+               filter(trans_back_norm_comp_0921_0631, subpool == 'subpool3')$ave_ratio_0_norm_0631,
+               use = "pairwise.complete.obs", method = "pearson"
+             ), 2
+           )
+           )
+  ) + 
+  annotate("text", x = 1, y = 4, color = '#482677FF',
+           label = paste('r =', round(
+             cor(
+               filter(trans_back_norm_comp_0921_0631, subpool == 'subpool5')$ave_ratio_0_norm_0921, 
+               filter(trans_back_norm_comp_0921_0631, subpool == 'subpool5')$ave_ratio_0_norm_0631,
+               use = "pairwise.complete.obs", method = "pearson"
+             ), 2
+           )
+           )
+  )
+
+
 #Negatives plots----------------------------------------------------------------------------
 
 log_neg_cont <- function(df1) {
@@ -1892,164 +1998,4 @@ p_nc_log_rep_grid <- plot_grid(
 save_plot('plots/p_nc_log_rep_grid.png', 
           p_nc_log_rep_grid, base_height = 10, base_width = 10)
 
-
-
-
-
-
-
-
-
-#Untidy joining---------------------------------------------------------------------------
-
-var_expression <- function(df1, df2) {
-  RNA_DNA <- inner_join(
-    df1, df2, by = c("name", "subpool", "most_common"), 
-    suffix = c("_RNA", "_DNA")
-  ) %>%
-    mutate(ratio = n_RNA / n_DNA)
-  print('x defined as RNA, y defined as DNA in var_expression(x,y)')
-  return(RNA_DNA)
-}
-
-RNA_DNA_0A <- var_expression(variant_counts_R0A, variant_counts_DNA) %>%
-  mutate(conc = 0) %>%
-  mutate(rep = 'A')
-RNA_DNA_0B <- var_expression(variant_counts_R0B, variant_counts_DNA) %>%
-  mutate(conc = 0) %>%
-  mutate(rep = 'B')
-RNA_DNA_2_5A <- var_expression(variant_counts_R2_5A, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-5)) %>%
-  mutate(rep = 'A')
-RNA_DNA_2_5B <- var_expression(variant_counts_R2_5B, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-5)) %>%
-  mutate(rep = 'B')
-RNA_DNA_2_4A <- var_expression(variant_counts_R2_4A, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-4)) %>%
-  mutate(rep = 'A')
-RNA_DNA_2_4B <- var_expression(variant_counts_R2_4B, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-4)) %>%
-  mutate(rep = 'B')
-RNA_DNA_2_3A <- var_expression(variant_counts_R2_3A, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-3)) %>%
-  mutate(rep = 'A')
-RNA_DNA_2_3B <- var_expression(variant_counts_R2_3B, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-3)) %>%
-  mutate(rep = 'B')
-RNA_DNA_2_2A <- var_expression(variant_counts_R2_2A, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-2)) %>%
-  mutate(rep = 'A')
-RNA_DNA_2_2B <- var_expression(variant_counts_R2_2B, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-2)) %>%
-  mutate(rep = 'B')
-RNA_DNA_2_1A <- var_expression(variant_counts_R2_1A, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-1)) %>%
-  mutate(rep = 'A')
-RNA_DNA_2_1B <- var_expression(variant_counts_R2_1B, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^-1)) %>%
-  mutate(rep = 'B')
-RNA_DNA_20A <- var_expression(variant_counts_R20A, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^0)) %>%
-  mutate(rep = 'A')
-RNA_DNA_20B <- var_expression(variant_counts_R20B, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^0)) %>%
-  mutate(rep = 'B')
-RNA_DNA_22A <- var_expression(variant_counts_R22A, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^2)) %>%
-  mutate(rep = 'A')
-RNA_DNA_22B <- var_expression(variant_counts_R22B, variant_counts_DNA) %>%
-  mutate(conc = as.numeric(2^2)) %>%
-  mutate(rep = 'B')
-
-
-#Untidy data of combined conc. and rep------------------------------------------------------
-var_conc_rep <- function(
-  df0A, df0B, df2_5A, df2_5B, df2_4A, df2_4B, df2_3A, df2_3B, df2_2A, df2_2B, df2_1A, df2_1B, 
-  df20A, df20B, df22A, df22B) {
-  join_0 <- inner_join(
-    df0A, df0B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_0A", "_0B")
-  )
-  join_2_5 <- inner_join(
-    df2_5A, df2_5B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_2_5A", "_2_5B")
-  )
-  join_2_4 <- inner_join(
-    df2_4A, df2_4B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_2_4A", "_2_4B")
-  )
-  join_2_3 <- inner_join(
-    df2_3A, df2_3B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_2_3A", "_2_3B")
-  )
-  join_2_2 <- inner_join(
-    df2_2A, df2_2B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_2_2A", "_2_2B")
-  )
-  join_2_1 <- inner_join(
-    df2_1A, df2_1B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_2_1A", "_2_1B")
-  )
-  join_20 <- inner_join(
-    df20A, df20B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_20A", "_20B")
-  )
-  join_22 <- inner_join(
-    df22A, df22B, by = c(
-      "name", "subpool", "most_common", "conc", "n_DNA", "barcodes_DNA"
-    ), suffix = c("_22A", "_22B")
-  )
-  join_0_2_5 <- inner_join(
-    join_0, join_2_5, by = c(
-      "name", "subpool", "most_common", "n_DNA", "barcodes_DNA"
-    ), suffix = c('')
-  )
-  join_0_2_4 <- inner_join(
-    join_0_2_5, join_2_4, by = c(
-      "name", "subpool", "most_common", "n_DNA", "barcodes_DNA"
-    )
-  )
-  join_0_2_3 <- inner_join(
-    join_0_2_4, join_2_3, by = c(
-      "name", "subpool", "most_common", "n_DNA", "barcodes_DNA"
-    )
-  )
-  join_0_2_2 <- inner_join(
-    join_0_2_3, join_2_2, by = c(
-      "name", "subpool", "most_common", "n_DNA", "barcodes_DNA"
-    )
-  )
-  join_0_2_1 <- inner_join(
-    join_0_2_2, join_2_1, by = c(
-      "name", "subpool", "most_common", "n_DNA", "barcodes_DNA"
-    )
-  )
-  join_0_20 <- inner_join(
-    join_0_2_1, join_20, by = c(
-      "name", "subpool", "most_common", "n_DNA", "barcodes_DNA"
-    )
-  )
-  join_0_22 <- inner_join(
-    join_0_20, join_22, by = c(
-      "name", "subpool", "most_common", "n_DNA", "barcodes_DNA"
-    )
-  )
-  print(
-    'processed dfs in format: 0A, 0B, 2_5A, 2_5B, 2_4A, 2_4B, 2_3A, 2_3B, 2_2A, 2_2B, 2_1A, 
-    2_1B, 20A, 20B, 22A, 22B'
-  )
-  return(join_0_22)
-}
-
-rep_0_22_A_B <- var_conc_rep(RNA_DNA_0A, RNA_DNA_0B, RNA_DNA_2_5A, RNA_DNA_2_5B,
-                             RNA_DNA_2_4A, RNA_DNA_2_4B, RNA_DNA_2_3A, RNA_DNA_2_3B,
-                             RNA_DNA_2_2A, RNA_DNA_2_2B, RNA_DNA_2_1A, RNA_DNA_2_1B,
-                             RNA_DNA_20A, RNA_DNA_20B, RNA_DNA_22A, RNA_DNA_22B)
 
