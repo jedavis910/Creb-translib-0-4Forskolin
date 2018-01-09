@@ -987,14 +987,28 @@ int_trans <- left_join(int_back_norm_rep_1_2, trans_back_norm_rep_0_22,
 
 log10_int_trans <- var_log10(int_trans)
 
-#Fitting a simple linear model predicting integrated from transient, fitting separately per
-#both background and subpool
+#Fitting a simple linear model integrated_exp ~ transient_exp(4 µM)
 
 log10_int_trans_22 <- log10_int_trans %>%
   select(subpool, name, background, barcodes_br1, barcodes_br2, ave_med_ratio_norm, 
-         barcodes_DNA, barcodes_RNA_22A, barcodes_RNA_22B, ave_ratio_22_norm) %>%
-  mutate(ave_int_barcode = (barcodes_br1 + barcodes_br2)/2) %>%
-  mutate(ave_RNA_22A_barcodes = (barcodes_RNA_22A + barcodes_RNA_22B)/2)
+         barcodes_RNA_22A, barcodes_RNA_22B, ave_ratio_22_norm) %>%
+  mutate(integrated = (barcodes_br1 + barcodes_br2)/2) %>%
+  mutate(transient = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+  select(-barcodes_br1, -barcodes_br2, -barcodes_RNA_22A, -barcodes_RNA_22B)
+
+log10_MPRA <- log10_int_trans %>%
+  select(subpool, name, background, barcodes_br1, barcodes_br2, ave_med_ratio_norm, 
+         barcodes_RNA_22A, barcodes_RNA_22B, ave_ratio_22_norm) %>%
+  mutate(integrated = (barcodes_br1 + barcodes_br2)/2) %>%
+  mutate(transient = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+  select(-barcodes_br1, -barcodes_br2, -barcodes_RNA_22A, -barcodes_RNA_22B) %>%
+  gather(integrated, transient, key = 'MPRA', value = 'barcodes') %>%
+  rename(integrated = ave_med_ratio_norm) %>%
+  rename(transient = ave_ratio_22_norm) %>%
+  gather(integrated, transient, key = 'MPRA2', value = 'ave_ratio_norm') %>%
+  filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'transient' & MPRA2 == 'transient')) %>%
+  select(-MPRA2)
+  
 
 lm_trans_int <- function(df) {
   model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm, data = df)
@@ -1049,7 +1063,7 @@ p_res_int_trans_sp <- ggplot(p_r_all, aes(x = subpool, y = resid)) +
 #Analyze differences between transient and integrated using features within each subpool
 
 subpool3_int_trans <- 
-  filter(p_r_all, subpool == "subpool3") %>%
+  filter(log10_MPRA, subpool == "subpool3") %>%
   ungroup () %>%
   select(-subpool) %>%
   mutate(name = gsub('2BS ', '', name), 
@@ -1065,15 +1079,20 @@ subpool3_int_trans <-
                   as.integer(spacing + 4), as.integer(spacing))) 
 
 subpool5_int_trans <- 
-  filter(p_r_all, subpool == "subpool5") %>%
+  filter(log10_MPRA, subpool == "subpool5") %>%
   ungroup () %>%
   select(-subpool) %>%
   mutate(name = gsub('no_site', 'nosite', name)) %>%
+  mutate(
+    name = gsub('_v chr9', '', name),
+    name = gsub('_v chr5', '', name),
+    name = gsub('_s pGl4', '', name)
+    ) %>%
+  mutate(design = name) %>%
   separate(name, into = c(
-    "subpool", "site1", "site2", "site3", "site4", "site5", "site6", 
-    "fluff"), sep = "_"
-  ) %>%
-  select(-subpool, -fluff) %>%
+    "subpool", "site1", "site2", "site3", "site4", "site5", "site6"), sep = "_"
+    ) %>%
+  select(-subpool) %>%
   mutate(consensus = str_detect(site1, "consensus") + 
            str_detect(site2, "consensus") + 
            str_detect(site3, "consensus") + 
@@ -1092,70 +1111,64 @@ subpool5_int_trans <-
            str_detect(site4, "nosite") +
            str_detect(site5, "nosite") +
            str_detect(site6, "nosite")) %>%
-  mutate(total_sites = consensus + weak) %>%
-  mutate(site_combo = 
-           ifelse(weak == 0 & consensus > 0, 
-                  'consensus', 'mixed')) %>%
-  mutate(site_type = 
-           ifelse(consensus == 0 & weak > 0, 
-                  'weak', site_combo))
+  mutate(total_sites = consensus + weak)
 
+subpool5_int_trans_cons <- subpool5_int_trans %>%
+  filter(weak == 0) %>%
+  mutate(site1 = as.integer(str_detect(site1, 'consensus'))) %>%
+  mutate(site2 = as.integer(str_detect(site2, 'consensus'))) %>%
+  mutate(site3 = as.integer(str_detect(site3, 'consensus'))) %>%
+  mutate(site4 = as.integer(str_detect(site4, 'consensus'))) %>%
+  mutate(site5 = as.integer(str_detect(site5, 'consensus'))) %>%
+  mutate(site6 = as.integer(str_detect(site6, 'consensus')))
+  
+#If want to have site as one variable figure out a better way than 
+  #gather(site1, site2, site3, site4, site5, site6, key = 'site', value = 'filled')
+  
 #plot subpool features vs. residuals between transient to integrated model
 
-p_subpool3_spa_dist_int_trans_resid <- ggplot(subpool3_int_trans, aes(dist, resid)) + 
-  geom_point(alpha = 0.5) +
-  facet_grid(spacing ~ background) + 
-  ylab('Residuals') + 
+p_subpool5_int_trans_consw <- ggplot(subpool5_int_trans, 
+                                    aes(x = as.factor(consensus), y = ave_ratio_norm,
+                                               color = MPRA)) +
+  geom_boxplot() +
+  facet_grid(. ~ background) +
+  xlab('Number of consensus binding sites') +
+  scale_y_continuous('Average\nnormalized expression') +
+  panel_border()
+
+save_plot('plots/p_subpool5_int_trans_consw.png', p_subpool5_int_trans_consw,
+          base_height = 4, base_width = 8)
+
+p_subpool5_int_trans_cons <- ggplot(filter(subpool5_int_trans, weak == 0), 
+                                     aes(x = as.factor(consensus), y = ave_ratio_norm,
+                                         color = MPRA)) +
+  geom_boxplot() +
+  facet_grid(. ~ background) +
+  xlab('Number of consensus binding sites') +
+  scale_y_continuous('Average\nnormalized expression') +
+  panel_border()
+
+save_plot('plots/p_subpool5_int_trans_cons.png', p_subpool5_int_trans_cons,
+          base_height = 4, base_width = 8)
+
+ggplot(NULL, aes(x = '', y = ave_ratio_norm, color = MPRA)) +
+  facet_grid(background ~ .) +
+  geom_point(data = filter(subpool5_int_trans_cons, site1 == 1 & total_sites == 1), 
+             aes(x = 'site1'), size = 2, show.legend = FALSE) +
+  geom_point(data = filter(subpool5_int_trans_cons, site2 == 1 & total_sites == 1), 
+             aes(x = 'site2'), size = 2, show.legend = FALSE) +
+  geom_point(data = filter(subpool5_int_trans_cons, site3 == 1 & total_sites == 1), 
+             aes(x = 'site3'), size = 2, show.legend = FALSE) +
+  geom_point(data = filter(subpool5_int_trans_cons, site4 == 1 & total_sites == 1), 
+             aes(x = 'site4'), size = 2, show.legend = FALSE) +
+  geom_point(data = filter(subpool5_int_trans_cons, site5 == 1 & total_sites == 1), 
+             aes(x = 'site5'), size = 2, show.legend = FALSE) +
+  geom_point(data = filter(subpool5_int_trans_cons, site6 == 1 & total_sites == 1), 
+             aes(x = 'site6'), size = 2, show.legend = FALSE) +
   panel_border() +
-  background_grid(major = 'xy', minor = 'none') +
-  geom_ref_line(h = 0, colour = 'black', size = 1) +
-  scale_x_continuous(
-    "Distance from First Site to Proximal Promoter End (bp)", 
-    breaks = seq(from = 0, to = 150, by = 10)) 
-
-p_subpool5_total_int_trans_consw_resid <- ggplot(subpool5_int_trans, 
-                                           aes(as.factor(consensus), resid)) +
-  geom_ref_line(h = 0, colour = 'black', size = 1) +
-  geom_boxplot() +
-  scale_color_viridis() +
-  facet_grid(. ~ background) +
-  xlab('Number of consensus binding sites') +
-  scale_y_continuous('Residual', limits = c(-4, 4)) +
-  panel_border()
-
-save_plot('plots/p_subpool5_total_int_trans_consw_resid.png', 
-          p_subpool5_total_int_trans_consw_resid,
-          base_width = 6, base_height = 4)
-
-p_subpool5_total_int_trans_cons_resid <- ggplot(filter(subpool5_int_trans, weak == 0), 
-                                           aes(as.factor(consensus), resid)) +
-  geom_ref_line(h = 0, colour = 'black', size = 1) +
-  geom_boxplot() +
-  scale_color_viridis() +
-  facet_grid(. ~ background) +
-  xlab('Number of consensus binding sites') +
-  scale_y_continuous('Residual', limits = c(-4, 4)) +
-  panel_border()
-
-save_plot('plots/p_subpool5_total_int_trans_cons_resid.png', 
-          p_subpool5_total_int_trans_cons_resid,
-          base_width = 6, base_height = 4)
-
-p_subpool5_total_int_trans_weak_resid <- ggplot(filter(subpool5_int_trans, consensus == 0), 
-                                                aes(as.factor(weak), resid)) +
-  geom_ref_line(h = 0, colour = 'black', size = 1) +
-  geom_boxplot() +
-  scale_color_viridis() +
-  facet_grid(. ~ background) +
-  xlab('Number of weak binding sites') +
-  scale_y_continuous('Residual', limits = c(-4, 4)) +
-  panel_border()
-
-save_plot('plots/p_subpool5_total_int_trans_weak_resid.png', 
-          p_subpool5_total_int_trans_weak_resid,
-          base_width = 6, base_height = 4)
-
-
+  annotation_logticks(sides = 'l') +
+  ylab('log10 average normalized ratio') +
+  xlab('Binding site architecture')
 
 #Plot comparisons between trans concentrations and integrated
 
@@ -1582,6 +1595,8 @@ save_plot('plots/p_var_log10_int_trans_22.png', p_var_log10_int_trans_22)
 
 
 #Make df with concentration and background-normalized expression as a variable---------------
+
+#Change this code to try to use gather to simplify operation
 
 var_conc_exp <- function(df) {
   df_0 <- df %>%
