@@ -1594,6 +1594,38 @@ trans_back_norm_conc_log2 <- var_conc_exp(trans_back_norm_rep_0_22) %>%
 trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
 
 
+#K-means clustering on data-----------------------------------------------------
+
+library(NbClust)
+
+min_log10_back_norm_rep_0_22 <- log10_trans_back_norm_rep_0_22 %>%
+  filter(subpool == 'subpool5') %>%
+  select(ave_ratio_0_norm, ave_ratio_2_5_norm, ave_ratio_2_4_norm,
+         ave_ratio_2_3_norm, ave_ratio_2_2_norm, ave_ratio_2_1_norm,
+         ave_ratio_20_norm, ave_ratio_22_norm)
+
+wssplot <- function(data, nc=15, seed=1234){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")}
+
+wssplot(min_log10_back_norm_rep_0_22)
+
+set.seed(1234)
+min_log10_km <- kmeans(min_log10_back_norm_rep_0_22, 3, nstart = 25)
+
+summary(min_log10_km)
+look <- augment(min_log10_km, min_log10_back_norm_rep_0_22)
+
+took_too_long <- NbClust(ihatethis, min.nc = 2, max.nc = 15, method = 'kmeans')
+
+barplot(table(took_too_long$Best.n[1,]),
+        xlab="Numer of Clusters", ylab="Number of Criteria",
+        main="Number of Clusters Chosen by Criteria")
+
 #Hill plots---------------------------------------------------------------------
 
 #Sample data and plot to visualize trend
