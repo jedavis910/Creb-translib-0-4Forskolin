@@ -324,7 +324,8 @@ back_norm <- function(df1) {
     mutate(ave_ratio_2_2_norm = (ratio_2_2A_norm + ratio_2_2B_norm)/2) %>%
     mutate(ave_ratio_2_1_norm = (ratio_2_1A_norm + ratio_2_1B_norm)/2) %>%
     mutate(ave_ratio_20_norm = (ratio_20A_norm + ratio_20B_norm)/2) %>%
-    mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2)
+    mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2) %>%
+    mutate(induction_of_ave = ave_ratio_22_norm/ave_ratio_0_norm)
 }
 
 trans_back_norm_rep_0_22 <- back_norm(rep_0_22_A_B)
@@ -1596,16 +1597,38 @@ trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
 
 #K-means clustering on data-----------------------------------------------------
 
-library(NbClust)
+#Can I bin out noisy data manually just from induction level?
+
+ind_less2 <- trans_back_norm_rep_0_22 %>%
+  filter(induction_of_ave < 2) %>%
+  var_conc_exp()
+
+ind_more2 <- trans_back_norm_rep_0_22 %>%
+  filter(induction_of_ave >= 2) %>%
+  var_conc_exp()
+
+ggplot(ind_less2, 
+       aes(conc, ave_ratio_norm, color = name)) +
+  geom_point(show.legend = FALSE) +
+  geom_line(show.legend = FALSE) +
+  xlab('Forskolin µM') +
+  ylab('Average background-normalized\nsum RNA/DNA') +
+  panel_border() +
+  annotation_logticks(sides = 'b') +
+  background_grid(major = 'xy', minor = 'none')
+
+
+#Can I use k-means to bin out noisy data?
 
 min_log10_back_norm_rep_0_22 <- log10_trans_back_norm_rep_0_22 %>%
   filter(subpool == 'subpool5') %>%
   select(ave_ratio_0_norm, ave_ratio_2_5_norm, ave_ratio_2_4_norm,
          ave_ratio_2_3_norm, ave_ratio_2_2_norm, ave_ratio_2_1_norm,
-         ave_ratio_20_norm, ave_ratio_22_norm)
+         ave_ratio_20_norm, ave_ratio_22_norm) %>%
+  scale()
 
 wssplot <- function(data, nc=15, seed=1234){
-  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  wss <- (nrow(data) - 1) * sum(apply(data, 2, var))
   for (i in 2:nc){
     set.seed(seed)
     wss[i] <- sum(kmeans(data, centers=i)$withinss)}
@@ -1614,17 +1637,150 @@ wssplot <- function(data, nc=15, seed=1234){
 
 wssplot(min_log10_back_norm_rep_0_22)
 
+save_plot('plots/wsskmeans.png', wssplot(min_log10_back_norm_rep_0_22),
+          base_height = 4.4, base_width = 5)
+
 set.seed(1234)
-min_log10_km <- kmeans(min_log10_back_norm_rep_0_22, 3, nstart = 25)
+min_km <- kmeans(min_log10_back_norm_rep_0_22, 7, nstart = 25)
 
-summary(min_log10_km)
-look <- augment(min_log10_km, min_log10_back_norm_rep_0_22)
+min_km
 
-took_too_long <- NbClust(ihatethis, min.nc = 2, max.nc = 15, method = 'kmeans')
+s5_log10_bn_rep_0_22 <- log10_trans_back_norm_rep_0_22 %>%
+  filter(subpool == 'subpool5')
 
-barplot(table(took_too_long$Best.n[1,]),
-        xlab="Numer of Clusters", ylab="Number of Criteria",
-        main="Number of Clusters Chosen by Criteria")
+clust_s5_bn_conc_rep_0_22 <- augment(min_km, 
+                                     min_back_norm_rep_0_22) %>%
+  rename(cluster = .cluster) %>%
+  select(cluster) %>%
+  cbind(s5_log10_bn_rep_0_22) %>%
+  select(subpool, name, most_common, cluster) %>%
+  left_join(trans_back_norm_conc, by = c('subpool', 'name', 'most_common'))
+
+ggplot(filter(clust_s5_bn_conc_rep_0_22, cluster == 5 | cluster == 7), 
+       aes(conc, ave_ratio_norm, color = name)) +
+  geom_point(show.legend = FALSE) +
+  geom_line(show.legend = FALSE) +
+  facet_wrap(~ cluster) +
+  xlab('Forskolin µM') +
+  ylab('Average background-normalized\nsum RNA/DNA') +
+  panel_border() +
+  annotation_logticks(sides = 'b') +
+  background_grid(major = 'xy', minor = 'none')
+
+
+#Michaelis-Menton Plots---------------------------------------------------------
+
+#Pull out one variant to test
+
+m_m_model <- function(df) {
+  conc_half_max_init <- (2^-3)
+  max_ave_ratio_norm_init <- 1
+  m_m_nls <- nls(
+    ave_ratio_norm ~ (max_ave_ratio_norm * conc)/(conc_half_max + conc),
+    data = df, start = c(conc_half_max = conc_half_max_init, 
+                         max_ave_ratio_norm = max_ave_ratio_norm_init))
+  return(m_m_nls)
+}
+
+#Fitting single variant
+
+trans_back_norm_conc_sample1 <- trans_back_norm_conc %>%
+  filter(subpool == 'subpool5') %>%
+  select(-ave_barcode) %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest() %>%
+  sample_n(1) %>%
+  unnest()
+
+ggplot(trans_back_norm_conc_sample1, 
+       aes(conc, ave_ratio_norm, color = name)) +
+  geom_point(show.legend = FALSE) +
+  geom_line() +
+  xlab('Forskolin µM') +
+  ylab('Average background-normalized\nsum RNA/DNA')
+
+m_m_fit <- m_m_model(trans_back_norm_conc_sample1)
+summary(m_m_fit)
+
+pred_resid <- function(df1, x) {
+  df2 <- df1 %>%
+    add_predictions(x)
+  df3 <- df2 %>%
+    add_residuals(x)
+  return(df3)
+  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
+}
+
+m_m_p_r <- pred_resid(trans_back_norm_conc_sample, m_m_fit)
+
+ggplot(m_m_p_r, aes(x = conc)) +
+  geom_point(aes(y = ave_ratio_norm), color = 'black') +
+  geom_line(aes(y = ave_ratio_norm), color = 'black') +
+  geom_point(aes(y = pred), color = 'red') +
+  geom_line(aes(y = pred), color = 'red', linetype = 2) +
+  xlab('Forskolin µM') +
+  ylab('Average background-normalized\nsum RNA/DNA')
+
+
+#Fitting nested data
+
+trans_back_norm_conc_sample <- trans_back_norm_conc %>%
+  filter(subpool == 'subpool5') %>%
+  select(-ave_barcode) %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest() %>%
+  sample_n(5)
+
+ggplot(unnest(trans_back_norm_conc_sample), 
+       aes(conc, ave_ratio_norm, color = name)) +
+  geom_point(show.legend = FALSE) +
+  geom_line() +
+  xlab('Forskolin µM') +
+  ylab('Average background-normalized\nsum RNA/DNA')
+
+m_m_nest_fit <- trans_back_norm_conc_sample %>%
+  mutate(m_m_fit = map(trans_back_norm_conc_sample$data, m_m_model)) 
+
+m_m_nest_coef <- function(df1) {
+  add_coef_unnest <- df1 %>%
+    mutate(results = map(m_m_fit, tidy)) %>%
+    select(-m_m_fit, -data) %>%
+    unnest()
+}
+
+m_m_coef <- m_m_nest_coef(m_m_nest_fit)
+
+m_m_nest_pred_resid <- function(df1) {
+  pred <- df1 %>%
+    mutate(m_m_pred = map2(data, m_m_fit, add_predictions)) %>%
+    select(-data, -m_m_fit) %>%
+    unnest()
+  resid <- df1 %>%
+    mutate(m_m_resids = map2(data, m_m_fit, add_residuals)) %>%
+    select(-data, -m_m_fit) %>%
+    unnest()
+  data <- df1 %>%
+    select(-m_m_fit) %>%
+    unnest()
+  data_pred <- left_join(data, pred, 
+                          by = c('subpool', 'name', 'most_common', 'background',
+                                 'conc', 'ave_ratio_norm'))
+  data_pred_resid <- left_join(data_pred, resid,
+                               by = c('subpool', 'name', 'most_common', 
+                                      'background', 'conc', 'ave_ratio_norm'))
+  return(data_pred_resid)
+}
+  
+m_m_p_r <- m_m_nest_pred_resid(m_m_nest_fit)
+
+ggplot(m_m_p_r, aes(x = conc, group = name)) +
+  geom_point(aes(y = ave_ratio_norm), color = 'black') +
+  geom_line(aes(y = ave_ratio_norm), color = 'black') +
+  geom_point(aes(y = pred), color = 'red') +
+  geom_line(aes(y = pred), color = 'red', linetype = 2) +
+  xlab('Forskolin µM') +
+  ylab('Average background-normalized\nsum RNA/DNA')
+
 
 #Hill plots---------------------------------------------------------------------
 
