@@ -1595,6 +1595,90 @@ save_plot('plots/p_var_log10_int_trans_grid.png',
 save_plot('plots/p_var_log10_int_trans_22.png', p_var_log10_int_trans_22)
 
 
+#Comparison to Luciferase assays------------------------------------------------
+
+#Since using background-normalized reads to account for read stealing, am not 
+#comparing to pc pGL4.29 Promega 1-63 + 1-87, can always work this into
+#normalizing to nc s pGL4. Also, since using background-normalized reads, will 
+#not compare negative controls as these values are all 1 in sequencing data
+
+#Comparing to integrated luciferase assays
+luc_comp_seq <- filter(trans_back_norm_rep_0_22, 
+                       name %in% c('subpool3_2BS 16 bp spacing consensus+flank x2_dist_79_s pGl4',
+                                   'subpool3_2BS 6 bp spacing consensus+flank x2_dist_9_s pGl4',
+                                   'subpool3_2BS 11 bp spacing consensus+flank x2_dist_14_s pGl4',
+                                   'subpool5_no_site_consensus_weak_consensus_no_site_weak_v chr9')) %>%
+  select(subpool, name, ratio_0A_norm, ratio_0B_norm, ratio_2_5A_norm, 
+         ratio_2_5B_norm, ratio_2_4A_norm, ratio_2_4B_norm, ratio_2_3A_norm, 
+         ratio_2_3B_norm, ratio_2_2A_norm, ratio_2_2B_norm, ratio_2_1A_norm,
+         ratio_2_1B_norm, ratio_20A_norm, ratio_20B_norm, ratio_22A_norm, 
+         ratio_22B_norm)
+
+#Will need to use average of each concentration instead in the above then
+#normalize each expression to that at 0 to compare to luciferase
+
+var_conc_exp <- function(df) {
+  df_0 <- df %>%
+    mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_0, 
+           ave_ratio_0_norm) %>%
+    mutate(conc = 2^-7) %>%
+    rename(ave_ratio_norm = ave_ratio_0_norm) %>%
+    rename(ave_barcode = ave_barcode_0)
+  df_2_5 <- df %>%
+    mutate(ave_barcode_2_5 = (barcodes_RNA_2_5A + barcodes_RNA_2_5B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_5, 
+           ave_ratio_2_5_norm) %>%
+    mutate(conc = 2^-5) %>%
+    rename(ave_ratio_norm = ave_ratio_2_5_norm) %>%
+    rename(ave_barcode = ave_barcode_2_5)
+  df_2_4 <- df %>%
+    mutate(ave_barcode_2_4 = (barcodes_RNA_2_4A + barcodes_RNA_2_4B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_4, 
+           ave_ratio_2_4_norm) %>%
+    mutate(conc = 2^-4) %>%
+    rename(ave_ratio_norm = ave_ratio_2_4_norm) %>%
+    rename(ave_barcode = ave_barcode_2_4)
+  df_2_3 <- df %>%
+    mutate(ave_barcode_2_3 = (barcodes_RNA_2_3A + barcodes_RNA_2_3B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_3, 
+           ave_ratio_2_3_norm) %>%
+    mutate(conc = 2^-3) %>%
+    rename(ave_ratio_norm = ave_ratio_2_3_norm) %>%
+    rename(ave_barcode = ave_barcode_2_3)
+  df_2_2 <- df %>%
+    mutate(ave_barcode_2_2 = (barcodes_RNA_2_2A + barcodes_RNA_2_2B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_2, 
+           ave_ratio_2_2_norm) %>%
+    mutate(conc = 2^-2) %>%
+    rename(ave_ratio_norm = ave_ratio_2_2_norm) %>%
+    rename(ave_barcode = ave_barcode_2_2)
+  df_2_1 <- df %>%
+    mutate(ave_barcode_2_1 = (barcodes_RNA_2_1A + barcodes_RNA_2_1B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_2_1, 
+           ave_ratio_2_1_norm) %>%
+    mutate(conc = 2^-1) %>%
+    rename(ave_ratio_norm = ave_ratio_2_1_norm) %>%
+    rename(ave_barcode = ave_barcode_2_1)
+  df_20 <- df %>%
+    mutate(ave_barcode_20 = (barcodes_RNA_20A + barcodes_RNA_20B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_20, 
+           ave_ratio_20_norm) %>%
+    mutate(conc = 2^0) %>%
+    rename(ave_ratio_norm = ave_ratio_20_norm) %>%
+    rename(ave_barcode = ave_barcode_20)
+  df_22 <- df %>%
+    mutate(ave_barcode_22 = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode_22, 
+           ave_ratio_22_norm) %>%
+    mutate(conc = 2^2) %>%
+    rename(ave_ratio_norm = ave_ratio_22_norm) %>%
+    rename(ave_barcode = ave_barcode_22)
+  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, df_22)
+  return(df_0_22)
+}
+
+
 #K-means clustering on data-----------------------------------------------------
 
 #Can I bin out noisy data manually just from induction level?
