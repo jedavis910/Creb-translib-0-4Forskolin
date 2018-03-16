@@ -1597,86 +1597,174 @@ save_plot('plots/p_var_log10_int_trans_22.png', p_var_log10_int_trans_22)
 
 #Comparison to Luciferase assays------------------------------------------------
 
-#Since using background-normalized reads to account for read stealing, am not 
-#comparing to pc pGL4.29 Promega 1-63 + 1-87, can always work this into
-#normalizing to nc s pGL4. Also, since using background-normalized reads, will 
-#not compare negative controls as these values are all 1 in sequencing data
+#Since using background-normalized reads to account for read stealing. Also, 
+#since using background-normalized reads, will not compare negative controls as 
+#these values are all 1 in sequencing data
 
-#Comparing to integrated luciferase assays
-luc_comp_seq <- filter(trans_back_norm_rep_0_22, 
-                       name %in% c('subpool3_2BS 16 bp spacing consensus+flank x2_dist_79_s pGl4',
-                                   'subpool3_2BS 6 bp spacing consensus+flank x2_dist_9_s pGl4',
-                                   'subpool3_2BS 11 bp spacing consensus+flank x2_dist_14_s pGl4',
-                                   'subpool5_no_site_consensus_weak_consensus_no_site_weak_v chr9')) %>%
-  select(subpool, name, ratio_0A_norm, ratio_0B_norm, ratio_2_5A_norm, 
-         ratio_2_5B_norm, ratio_2_4A_norm, ratio_2_4B_norm, ratio_2_3A_norm, 
-         ratio_2_3B_norm, ratio_2_2A_norm, ratio_2_2B_norm, ratio_2_1A_norm,
-         ratio_2_1B_norm, ratio_20A_norm, ratio_20B_norm, ratio_22A_norm, 
-         ratio_22B_norm)
+#Want to add pc control pGL4.29 Promega 1-63 + 1-87 to background-normalized 
+#reads
 
-#Will need to use average of each concentration instead in the above then
-#normalize each expression to that at 0 to compare to luciferase
+trans_back_norm_pc_spGl4 <- rep_0_22_A_B %>%
+  filter(name == 'pGL4.29 Promega 1-63 + 1-87') %>%
+  mutate(name = 'pGL4.29 Promega 1-63 + 1-87_scramble pGL4.29 Promega 1-63 + 1-87') %>%
+  mutate(subpool = 'subpool3') %>%
+  rbind(rep_0_22_A_B) %>%
+  back_norm()
 
-var_conc_exp <- function(df) {
-  df_0 <- df %>%
-    mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_0, 
-           ave_ratio_0_norm) %>%
-    mutate(conc = 2^-7) %>%
-    rename(ave_ratio_norm = ave_ratio_0_norm) %>%
-    rename(ave_barcode = ave_barcode_0)
-  df_2_5 <- df %>%
-    mutate(ave_barcode_2_5 = (barcodes_RNA_2_5A + barcodes_RNA_2_5B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_2_5, 
-           ave_ratio_2_5_norm) %>%
+
+#Isolating variants used in both assays from the transient data, make df untidy
+#with conc, Expave/Expave0, assay type and name
+trans_untidy_conc_expto0 <- function(df) {
+  sequences <- df %>%
+    filter(name %in% c('subpool3_2BS 16 bp spacing consensus+flank x2_dist_79_s pGl4',
+                       'subpool3_2BS 6 bp spacing consensus+flank x2_dist_9_s pGl4',
+                       'subpool3_2BS 11 bp spacing consensus+flank x2_dist_14_s pGl4',
+                       'subpool5_no_site_consensus_weak_consensus_no_site_weak_v chr9',
+                       'pGL4.29 Promega 1-63 + 1-87_s pGl4')) %>%
+    select(subpool, name, ave_ratio_0_norm, ave_ratio_2_5_norm, 
+           ave_ratio_2_4_norm, ave_ratio_2_3_norm, ave_ratio_2_2_norm, 
+           ave_ratio_2_1_norm, ave_ratio_20_norm, ave_ratio_22_norm) %>%
+    mutate(is0 = ave_ratio_0_norm)
+  df_0 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_0_norm) %>%
+    mutate(conc = 0) %>%
+    rename(ave_ratio_norm = ave_ratio_0_norm)
+  df_2_5 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_2_5_norm) %>%
     mutate(conc = 2^-5) %>%
-    rename(ave_ratio_norm = ave_ratio_2_5_norm) %>%
-    rename(ave_barcode = ave_barcode_2_5)
-  df_2_4 <- df %>%
-    mutate(ave_barcode_2_4 = (barcodes_RNA_2_4A + barcodes_RNA_2_4B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_2_4, 
-           ave_ratio_2_4_norm) %>%
+    rename(ave_ratio_norm = ave_ratio_2_5_norm)
+  df_2_4 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_2_4_norm) %>%
     mutate(conc = 2^-4) %>%
-    rename(ave_ratio_norm = ave_ratio_2_4_norm) %>%
-    rename(ave_barcode = ave_barcode_2_4)
-  df_2_3 <- df %>%
-    mutate(ave_barcode_2_3 = (barcodes_RNA_2_3A + barcodes_RNA_2_3B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_2_3, 
-           ave_ratio_2_3_norm) %>%
+    rename(ave_ratio_norm = ave_ratio_2_4_norm)
+  df_2_3 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_2_3_norm) %>%
     mutate(conc = 2^-3) %>%
-    rename(ave_ratio_norm = ave_ratio_2_3_norm) %>%
-    rename(ave_barcode = ave_barcode_2_3)
-  df_2_2 <- df %>%
-    mutate(ave_barcode_2_2 = (barcodes_RNA_2_2A + barcodes_RNA_2_2B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_2_2, 
-           ave_ratio_2_2_norm) %>%
+    rename(ave_ratio_norm = ave_ratio_2_3_norm)
+  df_2_2 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_2_2_norm) %>%
     mutate(conc = 2^-2) %>%
-    rename(ave_ratio_norm = ave_ratio_2_2_norm) %>%
-    rename(ave_barcode = ave_barcode_2_2)
-  df_2_1 <- df %>%
-    mutate(ave_barcode_2_1 = (barcodes_RNA_2_1A + barcodes_RNA_2_1B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_2_1, 
-           ave_ratio_2_1_norm) %>%
+    rename(ave_ratio_norm = ave_ratio_2_2_norm)
+  df_2_1 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_2_1_norm) %>%
     mutate(conc = 2^-1) %>%
-    rename(ave_ratio_norm = ave_ratio_2_1_norm) %>%
-    rename(ave_barcode = ave_barcode_2_1)
-  df_20 <- df %>%
-    mutate(ave_barcode_20 = (barcodes_RNA_20A + barcodes_RNA_20B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_20, 
-           ave_ratio_20_norm) %>%
+    rename(ave_ratio_norm = ave_ratio_2_1_norm)
+  df_20 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_20_norm) %>%
     mutate(conc = 2^0) %>%
-    rename(ave_ratio_norm = ave_ratio_20_norm) %>%
-    rename(ave_barcode = ave_barcode_20)
-  df_22 <- df %>%
-    mutate(ave_barcode_22 = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
-    select(subpool, name, most_common, background, ave_barcode_22, 
-           ave_ratio_22_norm) %>%
+    rename(ave_ratio_norm = ave_ratio_20_norm)
+  df_22 <- sequences %>%
+    select(subpool, name, is0, ave_ratio_22_norm) %>%
     mutate(conc = 2^2) %>%
-    rename(ave_ratio_norm = ave_ratio_22_norm) %>%
-    rename(ave_barcode = ave_barcode_22)
-  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, df_22)
+    rename(ave_ratio_norm = ave_ratio_22_norm)
+  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, 
+                   df_22) %>%
+    mutate(ave_exp_to0 = ave_ratio_norm/is0) %>%
+    select(-is0, -ave_ratio_norm) %>%
+    mutate(assay = 'trans')
   return(df_0_22)
 }
+  
+trans_comp <- trans_untidy_conc_expto0(trans_back_norm_pc_spGl4)
+
+#Import luciferase assay df
+
+int_luc <- read_csv('Int_luc_4var_pncontrols.csv') %>%
+  rename(conc = Conc)
+
+#Will leave manipulation of all variants from luciferase assay in function, the
+#rbind function at the end determines which are combined and compared to other
+#assays
+
+int_untidy_conc_expto0 <- function(df) {
+  nc_Chr9 <- df %>%
+    select(conc, nc_Chr9a, nc_Chr9b, nc_Chr9c) %>%
+    mutate(ave_lum = (nc_Chr9a + nc_Chr9b + nc_Chr9c)/3) %>%
+    select(conc, ave_lum) %>%
+    mutate(ave_exp_to0 = ave_lum/ave_lum[1]) %>%
+    select(-ave_lum) %>%
+    mutate(name = 'subpool5_no_site_no_site_no_site_no_site_no_site_no_site_v chr9') %>%
+    mutate(subpool = 'subpool5')
+  pc_CRE <- df %>%
+    select(conc, pc_CREa, pc_CREb, pc_CREc) %>%
+    mutate(ave_lum = (pc_CREa + pc_CREb + pc_CREc)/3) %>%
+    select(conc, ave_lum) %>%
+    mutate(ave_exp_to0 = ave_lum/ave_lum[1])  %>%
+    select(-ave_lum) %>%
+    mutate(name = 'pGL4.29 Promega 1-63 + 1-87') %>%
+    mutate(subpool = 'control')
+  nc_CREmut <- df %>%
+    select(conc, nc_CREmuta, nc_CREmutb, nc_CREmutc) %>%
+    mutate(ave_lum = (nc_CREmuta + nc_CREmutb + nc_CREmutc)/3) %>%
+    select(conc, ave_lum) %>%
+    mutate(ave_exp_to0 = ave_lum/ave_lum[1]) %>%
+    select(-ave_lum) %>%
+    mutate(name = 'subpool5_no_site_no_site_no_site_no_site_no_site_no_site_s pGl4') %>%
+    mutate(subpool = 'subpool5')
+  var_11 <- df %>%
+    select(conc, var_11a, var_11b, var_11c) %>%
+    mutate(ave_lum = (var_11a + var_11b + var_11c)/3) %>%
+    select(conc, ave_lum) %>%
+    mutate(ave_exp_to0 = ave_lum/ave_lum[1])  %>%
+    select(-ave_lum) %>%
+    mutate(name = 'subpool3_2BS 16 bp spacing consensus+flank x2_dist_79_s pGl4') %>%
+    mutate(subpool = 'subpool3')
+  var_14 <- df %>%
+    select(conc, var_14a, var_14b, var_14c) %>%
+    mutate(ave_lum = (var_14a + var_14b + var_14c)/3) %>%
+    select(conc, ave_lum) %>%
+    mutate(ave_exp_to0 = ave_lum/ave_lum[1])  %>%
+    select(-ave_lum) %>%
+    mutate(name = 'subpool3_2BS 6 bp spacing consensus+flank x2_dist_9_s pGl4') %>%
+    mutate(subpool = 'subpool3')
+  var_17 <- df %>%
+    select(conc, var_17a, var_17b, var_17c) %>%
+    mutate(ave_lum = (var_17a + var_17b + var_17c)/3) %>%
+    select(conc, ave_lum) %>%
+    mutate(ave_exp_to0 = ave_lum/ave_lum[1])  %>%
+    select(-ave_lum) %>%
+    mutate(name = 'subpool3_2BS 11 bp spacing consensus+flank x2_dist_14_s pGl4') %>%
+    mutate(subpool = 'subpool3')
+  var_18 <- df %>%
+    select(conc, var_18a, var_18b, var_18c) %>%
+    mutate(ave_lum = (var_18a + var_18b + var_18c)/3) %>%
+    select(conc, ave_lum) %>%
+    mutate(ave_exp_to0 = ave_lum/ave_lum[1])  %>%
+    select(-ave_lum) %>%
+    mutate(name = 'subpool5_no_site_consensus_weak_consensus_no_site_weak_v chr9') %>%
+    mutate(subpool = 'subpool3')
+  all_var <- rbind(var_11, var_14, var_17, var_18, pc_CRE) %>%
+    mutate(assay = 'int_luc')
+  return(all_var)
+}
+
+luc_comp <- int_untidy_conc_expto0(int_luc)
+
+comp_luc_trans <- rbind(trans_comp, luc_comp)
+
+p_luc_comp <- ggplot(luc_comp, aes(conc, ave_exp_to0, color = name)) +
+  geom_point() +
+  geom_line() +
+  scale_color_viridis(discrete = TRUE) + 
+  xlab('Forskolin (µM)') +
+  ylab('Normalized luminescence\nto 0 µM Forsk (AU)') +
+  background_grid() + 
+  ggtitle('Integrated Luminescence')
+
+save_plot('plots/p_luc_comp.png', p_luc_comp, scale = 1.1,
+          base_width = 10, base_height = 3)
+
+p_trans_comp <- ggplot(trans_comp, aes(conc, ave_exp_to0, color = name)) +
+  geom_point() +
+  geom_line() +
+  scale_color_viridis(discrete = TRUE) + 
+  xlab('Forskolin (µM)') +
+  ylab('Normalized expression\nto 0 µM Forsk (AU)') +
+  background_grid() + 
+  ggtitle('Transient MPRA         ')
+
+save_plot('plots/p_trans_comp.png', p_trans_comp, scale = 1.1,
+          base_width = 10, base_height = 3)
 
 
 #K-means clustering on data-----------------------------------------------------
