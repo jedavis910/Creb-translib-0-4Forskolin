@@ -983,10 +983,38 @@ save_plot('plots/p_log10_var_rep_grid.png',
 
 int_back_norm_rep_1_2 <- read_tsv('../20171129_intLib/int_back_norm_rep_1_2.txt')
 
-int_trans <- left_join(int_back_norm_rep_1_2, trans_back_norm_rep_0_22, 
-                       by = c('subpool', 'name', 'most_common', 'background'))
+int_rep_1_2 <- read_tsv('../20171129_intLib/rep_1_2.txt')
 
-log10_int_trans <- var_log10(int_trans)
+int_trans <- left_join(int_rep_1_2, rep_0_22_A_B, 
+                       by = c('subpool', 'name', 'most_common'))
+
+log10_int_trans <- var_log10(int_trans) %>%
+  mutate(ave_med_ratio = (med_ratio_br1 + med_ratio_br2)/2) %>%
+  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2)
+
+log10_int_trans_sp5 <- log10_int_trans %>%
+  filter(subpool == 'subpool5')
+
+p_var_log10_int_trans_4_sp5 <- ggplot(log10_int_trans_sp5, 
+                                  aes(ave_med_ratio, ave_ratio_22)) +
+  geom_point(alpha = 0.2) +
+  geom_point(data = filter(log10_int_trans_sp5, 
+                           grepl(
+                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
+                             name)), 
+             color = 'red', alpha = 0.7) +
+  annotation_logticks(scaled = TRUE) +
+  xlab("Integrated\naverage log10\nmedian expression") +
+  ylab("Transient\naverage log10\nsum expression") +
+  annotate("text", x = -1.5, y = 1,
+           label = paste('r =', 
+                         round(cor(log10_int_trans_sp5$ave_med_ratio, 
+                                   log10_int_trans_sp5$ave_ratio_22,
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
+
+save_plot('plots/var_log10_int_trans_4_sp5.png', p_var_log10_int_trans_4_sp5)
+
 
 #Fitting a simple linear model integrated_exp ~ transient_exp(4 µM)
 
