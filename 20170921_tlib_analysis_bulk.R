@@ -11,6 +11,8 @@ library(broom)
 cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
                 '#B8DE29FF', '#FDE725FF')
 
+cbPalette3 <- c('#39568CFF', '#1F968BFF', '#73D055FF')
+
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
 #R0A_BC and R0B_BC: RNA at 0 µM Forsk replicate A and B
@@ -122,14 +124,14 @@ var_sum_bc_num <- function(df1) {
     group_by(subpool, name, most_common) %>%
     count(name, wt = normalized) %>%
     rename(sum = n)
-  bc_sum <- inner_join(variant_sum, bc_count, 
+  bc_sum <- left_join(variant_sum, bc_count, 
                        by = c("name", "subpool", "most_common")) %>%
     ungroup()
   return(bc_sum)
 }
 
 variant_counts_DNA <- var_sum_bc_num(bc_join_DNA) %>%
-  filter(barcodes > 7)
+  filter(barcodes > 2)
 
 variant_counts_R0A <- var_sum_bc_num(bc_join_R0A)
 variant_counts_R0B <- var_sum_bc_num(bc_join_R0B)
@@ -159,7 +161,8 @@ var_expression <- function(df1, df2) {
   RNA_DNA <- inner_join(df1, df2, 
                         by = c("name", "subpool", "most_common"), 
                         suffix = c("_DNA", "_RNA")) %>%
-    mutate(ratio = sum_RNA / sum_DNA)
+    mutate(ratio = sum_RNA / sum_DNA) %>%
+    filter(ratio > 0)
   print('x defined as DNA, y defined as RNA in var_expression(x,y)')
   return(RNA_DNA)
 }
@@ -248,7 +251,7 @@ var_conc_rep <- function(df0A, df0B, df2_5A, df2_5B, df2_4A, df2_4B, df2_3A,
                                  "barcodes_DNA")) %>%
     ungroup()
   print('processed dfs in order of samples: 0A, 0B, 2_5A, 2_5B, 2_4A, 2_4B, 
-2_3A, 2_3B, 2_2A, 2_2B, 2_1A, 2_1B, 20A, 20B, 22A, 22B')
+        2_3A, 2_3B, 2_2A, 2_2B, 2_1A, 2_1B, 20A, 20B, 22A, 22B')
   return(join_0_22)
 }
 
@@ -324,8 +327,7 @@ back_norm <- function(df1) {
     mutate(ave_ratio_2_2_norm = (ratio_2_2A_norm + ratio_2_2B_norm)/2) %>%
     mutate(ave_ratio_2_1_norm = (ratio_2_1A_norm + ratio_2_1B_norm)/2) %>%
     mutate(ave_ratio_20_norm = (ratio_20A_norm + ratio_20B_norm)/2) %>%
-    mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2) %>%
-    mutate(induction_of_ave = ave_ratio_22_norm/ave_ratio_0_norm)
+    mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2)
 }
 
 trans_back_norm_rep_0_22 <- back_norm(rep_0_22_A_B)
@@ -338,15 +340,13 @@ trans_back_norm_rep_0_22 <- back_norm(rep_0_22_A_B)
 
 var_log2 <- function(df) {
   log_ratio_df <- df %>% 
-    mutate_if(is.double, 
-              funs(log2(.)))
+    mutate_if(is.double, funs(log2(.)))
   return(log_ratio_df)
 }
 
 var_log10 <- function(df) {
   log_ratio_df <- df %>% 
-    mutate_if(is.double, 
-              funs(log10(.)))
+    mutate_if(is.double, funs(log10(.)))
   return(log_ratio_df)
 }
 
@@ -363,7 +363,7 @@ var_conc_exp <- function(df) {
     mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
     select(subpool, name, most_common, background, ave_barcode_0, 
            ave_ratio_0_norm) %>%
-    mutate(conc = 2^-7) %>%
+    mutate(conc = 0) %>%
     rename(ave_ratio_norm = ave_ratio_0_norm) %>%
     rename(ave_barcode = ave_barcode_0)
   df_2_5 <- df %>%
@@ -624,345 +624,117 @@ save_plot('plots/BC_per_variant.png',
 
 #plot replicates for summed variant expression
 
-p_var_rep_0 <- ggplot(NULL, aes(ratio_0A, ratio_0B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_0 <- ggplot(log10_rep_0_22_A_B, aes(ratio_0A, ratio_0B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_0A, 
-               log10_rep_0_22_A_B$ratio_0B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, 
-                      subpool == 'subpool3')$ratio_0A, 
-               filter(log10_rep_0_22_A_B, 
-                      subpool == 'subpool3')$ratio_0B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, 
-                      subpool == 'subpool5')$ratio_0A, 
-               filter(log10_rep_0_22_A_B, 
-                      subpool == 'subpool5')$ratio_0B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_0A,
+                 log10_rep_0_22_A_B$ratio_0B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_2_5 <- ggplot(NULL, aes(ratio_2_5A, ratio_2_5B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_2_5 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_5A, ratio_2_5B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_2_5A, 
-               log10_rep_0_22_A_B$ratio_2_5B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_5A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_5B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_5A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_5B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_2_5A,
+                 log10_rep_0_22_A_B$ratio_2_5B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_2_4 <- ggplot(NULL, aes(ratio_2_4A, ratio_2_4B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_2_4 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_4A, ratio_2_4B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_2_4A, 
-               log10_rep_0_22_A_B$ratio_2_4B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_4A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_4B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_4A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_4B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_2_4A,
+                 log10_rep_0_22_A_B$ratio_2_4B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2))) 
 
-p_var_rep_2_3 <- ggplot(NULL, aes(ratio_2_3A, ratio_2_3B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_2_3 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_3A, ratio_2_3B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_2_3A, 
-               log10_rep_0_22_A_B$ratio_2_3B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_3A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_3B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_3A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_3B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_2_3A,
+                 log10_rep_0_22_A_B$ratio_2_3B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_2_2 <- ggplot(NULL, aes(ratio_2_2A, ratio_2_2B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_2_2 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_2A, ratio_2_2B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_2_2A, 
-               log10_rep_0_22_A_B$ratio_2_2B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_2A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_2B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_2A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_2B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_2_2A,
+                 log10_rep_0_22_A_B$ratio_2_2B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2))) 
 
-p_var_rep_2_1 <- ggplot(NULL, aes(ratio_2_1A, ratio_2_1B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_2_1 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_1A, ratio_2_1B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_2_1A, 
-               log10_rep_0_22_A_B$ratio_2_1B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_1A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_2_1B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_1A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_2_1B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_2_1A,
+                 log10_rep_0_22_A_B$ratio_2_1B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_20 <- ggplot(NULL, aes(ratio_20A, ratio_20B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_20 <- ggplot(log10_rep_0_22_A_B, aes(ratio_20A, ratio_20B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_20A, 
-               log10_rep_0_22_A_B$ratio_20B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_20A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_20B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_20A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_20B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_20A,
+                 log10_rep_0_22_A_B$ratio_20B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_22 <- ggplot(NULL, aes(ratio_22A, ratio_22B)) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           subpool == 'control'),
-             color = '#2D708EFF', alpha = 0.5) +
-  geom_point(data = filter(log10_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  geom_density2d(data = log10_rep_0_22_A_B, alpha = 0.7, 
-                 color = 'black', size = 0.2, bins = 10) +
+p_var_rep_22 <- ggplot(log10_rep_0_22_A_B, aes(ratio_22A, ratio_22B)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("log10 variant\nsum RNA/DNA BR 1") +
-  ylab("log10 variant\nsum RNA/DNA BR 2") +
+  xlab("Expression (a.u.) replicate 1") +
+  ylab("Expression (a.u.) replicate 2") +
   scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
   background_grid(major = 'xy', minor = 'none') + 
   annotate("text", x = -1, y = 1,
-           label = paste('rtot =', round(
-             cor(
-               log10_rep_0_22_A_B$ratio_22A, 
-               log10_rep_0_22_A_B$ratio_22B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0.5, color = '#2D708EFF',
            label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_22A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool3')$ratio_22B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) +
-  annotate("text", x = -1, y = 0, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_22A, 
-               filter(log10_rep_0_22_A_B, subpool == 'subpool5')$ratio_22B,
-               use = "pairwise.complete.obs", method = "pearson"), 2))) 
+             cor(log10_rep_0_22_A_B$ratio_22A,
+                 log10_rep_0_22_A_B$ratio_22B,
+                 use = "pairwise.complete.obs", method = "pearson"), 2)))
 
 p_log10_var_rep_grid <- plot_grid(p_var_rep_0, p_var_rep_2_5, p_var_rep_2_4, 
                                   p_var_rep_2_3, p_var_rep_2_2, p_var_rep_2_1, 
@@ -1914,7 +1686,7 @@ m_m_model_nlslm <- function(df) {
 
 #Fitting single variant
 
-trans_back_0_norm_conc_sample1 <- trans_back_0_norm_conc_more1 %>%
+trans_back_0_norm_conc_sample1 <- trans_back_0_norm_conc %>%
   filter(subpool == 'subpool5') %>%
   select(-ave_barcode) %>%
   group_by(subpool, name, most_common, background) %>%
@@ -1957,41 +1729,12 @@ ggplot(m_m_p_r, aes(x = conc)) +
 
 #Fitting nested data
 
-trans_back_0_norm_conc_sample <- trans_back_0_norm_conc %>%
-  select(-ave_barcode) %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest() %>%
-  sample_n(5)
-
-ggplot(unnest(trans_back_0_norm_conc_sample), 
-       aes(conc, ave_ratio_norm)) +
-  facet_wrap(~ name) +
-  geom_point(show.legend = FALSE) +
-  geom_line() +
-  xlab('Forskolin µM') +
-  scale_y_continuous() +
-  ylab('Average background-normalized\nsum RNA/DNA')
-
-trans_back_0_norm_conc_nest <- trans_back_0_norm_conc_more1 %>%
-  select(-ave_barcode) %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest()
-
-m_m_nest_fit <- trans_back_0_norm_conc_nest %>%
-  mutate(m_m_fit = map(trans_back_0_norm_conc_nest$data, m_m_model)) 
-
-m_m_nest_fit_nlslm <- trans_back_0_norm_conc_nest %>%
-  mutate(m_m_fit = map(trans_back_0_norm_conc_nest$data, m_m_model_nlslm))
-
 m_m_nest_coef <- function(df1) {
   add_coef_unnest <- df1 %>%
     mutate(results = map(m_m_fit, tidy)) %>%
     select(-m_m_fit, -data) %>%
     unnest()
 }
-
-m_m_coef <- m_m_nest_coef(m_m_nest_fit)
-m_m_coef_nlslm <- m_m_nest_coef(m_m_nest_fit_nlslm)
 
 m_m_nest_pred_resid <- function(df1) {
   pred <- df1 %>%
@@ -2006,17 +1749,50 @@ m_m_nest_pred_resid <- function(df1) {
     select(-m_m_fit) %>%
     unnest()
   data_pred <- left_join(data, pred, 
-                          by = c('subpool', 'name', 'most_common', 'background',
-                                 'conc', 'ave_ratio_norm'))
+                         by = c('subpool', 'name', 'most_common', 'background',
+                                'conc', 'ave_ratio_norm'))
   data_pred_resid <- left_join(data_pred, resid,
                                by = c('subpool', 'name', 'most_common', 
                                       'background', 'conc', 'ave_ratio_norm'))
   return(data_pred_resid)
 }
-  
-m_m_p_r <- m_m_nest_pred_resid(m_m_nest_fit)
 
-ggplot(m_m_p_r, aes(x = conc)) +
+#Select higher expressing variants to fit curves to, had hard time fitting
+#nested data to 2500-4172 variants, but these drove lower than 0.75 expression 
+#above 0, would not expect a well-fitting curve for these lower-expressing 
+#variants
+
+trans_back_0_norm_conc_nest <- trans_back_0_norm_conc %>%
+  select(-ave_barcode) %>%
+  filter(!grepl('^subpool5_no_site_no_site_no_site_no_site_no_site_no_site', name)) %>%
+  filter(subpool == 'subpool5') %>%
+  arrange(desc(ave_ratio_norm)) %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest() %>%
+  slice(1:1500)
+
+ggplot(unnest(trans_back_0_norm_conc_nest), 
+       aes(conc, ave_ratio_norm, color = name)) +
+  geom_point(show.legend = FALSE) +
+  geom_line(show.legend = FALSE) +
+  xlab('Forskolin µM') +
+  scale_y_continuous() +
+  ylab('Average background-normalized\nsum RNA/DNA')
+
+m_m_nest_fit_nlslm <- trans_back_0_norm_conc_nest %>%
+  mutate(m_m_fit = map(trans_back_0_norm_conc_nest$data, m_m_model_nlslm))
+
+m_m_coef_nlslm <- m_m_nest_coef(m_m_nest_fit_nlslm)
+
+m_m_p_r <- m_m_nest_pred_resid(m_m_nest_fit_nlslm)
+
+test <- m_m_p_r %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest() %>%
+  sample_n(50) %>%
+  unnest()
+
+ggplot(test, aes(x = conc)) +
   facet_wrap(~ name) +
   panel_border() +
   geom_point(aes(y = ave_ratio_norm), color = 'black') +
@@ -2026,6 +1802,65 @@ ggplot(m_m_p_r, aes(x = conc)) +
   xlab('Forskolin µM') +
   scale_y_continuous() +
   ylab('Average background-normalized\nsum RNA/DNA')
+
+EC50 <- m_m_coef_nlslm %>%
+  filter(term == 'conc_half_max') %>%
+  select(-term) %>%
+  rename(EC50 = estimate) %>%
+  mutate(rel_std_error = std.error/EC50) %>%
+  filter(rel_std_error <= 0.25)
+
+s5_sep <- function(df1) {
+  df1 %>%
+  select(-subpool) %>%
+  mutate(name = gsub('no_site', 'nosite', name)) %>%
+  separate(name, into = c("subpool", "site1", "site2", "site3", "site4", 
+                          "site5", "site6", "fluff"), sep = "_") %>%
+  select(-subpool, -fluff) %>%
+  mutate(consensus = str_detect(site1, "consensus") + 
+           str_detect(site2, "consensus") + 
+           str_detect(site3, "consensus") + 
+           str_detect(site4, "consensus") + 
+           str_detect(site5, "consensus") + 
+           str_detect(site6, "consensus")) %>%
+  mutate(weak = str_detect(site1, "weak") +
+           str_detect(site2, "weak") +
+           str_detect(site3, "weak") +
+           str_detect(site4, "weak") +
+           str_detect(site5, "weak") +
+           str_detect(site6, "weak")) %>%
+  mutate(nosite = str_detect(site1, "nosite") +
+           str_detect(site2, "nosite") +
+           str_detect(site3, "nosite") +
+           str_detect(site4, "nosite") +
+           str_detect(site5, "nosite") +
+           str_detect(site6, "nosite")) %>%
+  mutate(total_sites = consensus + weak) %>%
+  mutate(site_combo = 
+           ifelse(weak == 0 & consensus > 0, 
+                  'consensus', 'mixed')) %>%
+  mutate(site_type = 
+           ifelse(consensus == 0 & weak > 0, 
+                  'weak', site_combo))
+}
+
+s5_EC50 <- s5_sep(EC50)
+
+ggplot(filter(s5_EC50, weak == 0), aes(factor(consensus), EC50)) +
+  geom_boxplot(aes(color = background))
+
+s5_hill_frac <- EC50 %>%
+  left_join(trans_back_0_norm_conc,
+            by = c('name', 'subpool', 'most_common', 'background')) %>%
+  mutate(frac = conc/(conc + EC50)) %>%
+  filter(conc > 0) %>%
+  mutate(conc_over_EC50 = conc/EC50) %>%
+  s5_sep()
+
+ggplot(filter(s5_hill_frac, weak == 0), aes(log2(conc), log2(frac/(1-frac)))) +
+  facet_grid(~ consensus) +
+  geom_line(aes(color = most_common), show.legend = FALSE) + 
+  background_grid(major = 'xy')
 
 
 #Hill plots---------------------------------------------------------------------
