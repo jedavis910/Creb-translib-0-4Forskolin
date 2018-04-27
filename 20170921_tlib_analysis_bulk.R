@@ -7,11 +7,15 @@ library(modelr)
 library(lazyeval)
 library(splines)
 library(broom)
+library(GGally)
+library(lemon)
 
 cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
                 '#B8DE29FF', '#FDE725FF')
 
 cbPalette3 <- c('#39568CFF', '#1F968BFF', '#73D055FF')
+
+cbPalette2 <- c('#39568CFF', '#95D840FF')
 
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
@@ -332,6 +336,15 @@ back_norm <- function(df1) {
 
 trans_back_norm_rep_0_22 <- back_norm(rep_0_22_A_B)
 
+#Add pGl4.29 pc's into background-normalization
+
+trans_back_norm_pc_spGl4 <- rep_0_22_A_B %>%
+  filter(name == 'pGL4.29 Promega 1-63 + 1-87' | name == 'pGL4.29 Promega 1-87') %>%
+  mutate(name = str_c(name, '_scramble pGL4.29 Promega 1-63 + 1-87')) %>%
+  mutate(subpool = 'subpool3') %>%
+  rbind(rep_0_22_A_B) %>%
+  back_norm()
+
 
 #determine the log(RNA/DNA) for each sample (this takes the log of sum_RNA and 
 #sum_DNA as well). Log2 is useful for replicate plots for expression and log10 
@@ -423,6 +436,8 @@ trans_back_norm_conc_log2 <- var_conc_exp(trans_back_norm_rep_0_22) %>%
   mutate(conc = log2(conc))
 
 trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
+
+trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
 
 
 #Separate into subpools---------------------------------------------------------
@@ -624,113 +639,232 @@ save_plot('plots/BC_per_variant.png',
 
 #plot replicates for summed variant expression
 
-p_var_rep_0 <- ggplot(log10_rep_0_22_A_B, aes(ratio_0A, ratio_0B)) +
-  geom_point(alpha = 0.2) +
+#plot all concentrations faceted for main figure
+
+var_conc_ratio <- function(df) {
+  df_0 <- df %>%
+    mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
+    select(subpool, name, most_common, background, ratio_0A_norm, 
+           ratio_0B_norm) %>%
+    mutate(conc = 0) %>%
+    rename(ratio_A_norm = ratio_0A_norm) %>%
+    rename(ratio_B_norm = ratio_0B_norm)
+  df_2_5 <- df %>%
+    mutate(ave_barcode_2_5 = (barcodes_RNA_2_5A + barcodes_RNA_2_5B)/2) %>%
+    select(subpool, name, most_common, background, ratio_2_5A_norm, 
+           ratio_2_5B_norm) %>%
+    mutate(conc = 2^-5) %>%
+    rename(ratio_A_norm = ratio_2_5A_norm) %>%
+    rename(ratio_B_norm = ratio_2_5B_norm)
+  df_2_4 <- df %>%
+    mutate(ave_barcode_2_4 = (barcodes_RNA_2_4A + barcodes_RNA_2_4B)/2) %>%
+    select(subpool, name, most_common, background, ratio_2_4A_norm, ratio_2_4B_norm) %>%
+    mutate(conc = 2^-4) %>%
+    rename(ratio_A_norm = ratio_2_4A_norm) %>%
+    rename(ratio_B_norm = ratio_2_4B_norm)
+  df_2_3 <- df %>%
+    mutate(ave_barcode_2_3 = (barcodes_RNA_2_3A + barcodes_RNA_2_3B)/2) %>%
+    select(subpool, name, most_common, background, ratio_2_3A_norm, ratio_2_3B_norm) %>%
+    mutate(conc = 2^-3) %>%
+    rename(ratio_A_norm = ratio_2_3A_norm) %>%
+    rename(ratio_B_norm = ratio_2_3B_norm)
+  df_2_2 <- df %>%
+    mutate(ave_barcode_2_2 = (barcodes_RNA_2_2A + barcodes_RNA_2_2B)/2) %>%
+    select(subpool, name, most_common, background, ratio_2_2A_norm, ratio_2_2B_norm) %>%
+    mutate(conc = 2^-2) %>%
+    rename(ratio_A_norm = ratio_2_2A_norm) %>%
+    rename(ratio_B_norm = ratio_2_2B_norm)
+  df_2_1 <- df %>%
+    mutate(ave_barcode_2_1 = (barcodes_RNA_2_1A + barcodes_RNA_2_1B)/2) %>%
+    select(subpool, name, most_common, background, ratio_2_1A_norm, ratio_2_1B_norm) %>%
+    mutate(conc = 2^-1) %>%
+    rename(ratio_A_norm = ratio_2_1A_norm) %>%
+    rename(ratio_B_norm = ratio_2_1B_norm)
+  df_20 <- df %>%
+    mutate(ave_barcode_20 = (barcodes_RNA_20A + barcodes_RNA_20B)/2) %>%
+    select(subpool, name, most_common, background, ratio_20A_norm, ratio_20B_norm) %>%
+    mutate(conc = 2^0) %>%
+    rename(ratio_A_norm = ratio_20A_norm) %>%
+    rename(ratio_B_norm = ratio_20B_norm)
+  df_22 <- df %>%
+    mutate(ave_barcode_22 = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+    select(subpool, name, most_common, background, ratio_22A_norm, ratio_22B_norm) %>%
+    mutate(conc = 2^2) %>%
+    rename(ratio_A_norm = ratio_22A_norm) %>%
+    rename(ratio_B_norm = ratio_22B_norm)
+  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, df_22)
+  return(df_0_22)
+}
+
+rep_norm_ratio_conc <- var_conc_ratio(trans_back_norm_pc_spGl4)
+
+p_var_rep_04 <- ggplot(rep_norm_ratio_conc, aes(ratio_A_norm, ratio_B_norm)) +
+  facet_rep_wrap(~ conc, nrow = 4, ncol = 2) +
+  geom_point(alpha = 0.1) +
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  scale_x_log10(limits = c(0.5, 175), breaks = c(1, 10, 100)) + 
+  scale_y_log10(limits = c(0.5, 175), breaks = c(1, 10, 100)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  theme(strip.background = element_rect(colour="black", fill="white"),
+        axis.line.y = element_line(), panel.spacing.x=unit(1, "lines"))
+
+save_plot('plots/log10_04_rep.pdf', p_var_rep_04, scale = 1.3, 
+          base_width = 4, base_height = 2.25)
+
+
+#Or just plot induced
+
+p_var_rep_22 <- ggplot(rep_0_22_A_B, aes(ratio_22A, ratio_22B)) +
+  geom_point(alpha = 0.2) +
+  annotation_logticks(scaled = TRUE) +
+  xlab("Expression (a.u.)\nreplicate 1") +
+  ylab("Expression (a.u.)\nreplicate 2") +
+  ggtitle('4 µM') +
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
+  background_grid(major = 'xy', minor = 'none') + 
+  annotate("text", x = 0.5, y = 10,
+           label = paste('r =', round(
+             cor(log10_rep_0_22_A_B$ratio_22A,
+                 log10_rep_0_22_A_B$ratio_22B,
+                 use = "pairwise.complete.obs", method = "pearson"), 3)))
+
+save_plot('plots/p_var_rep_22.pdf', p_var_rep_22, scale = 1.3,
+          base_width = 2.5, base_height = 2.5)
+
+pearsons_conc <- tibble(
+  conc = c(0, 2^-5, 2^-4, 2^-3, 2^-2, 2^-1, 2^0, 2^2),
+  pearsons = c(round(cor(log10_rep_0_22_A_B$ratio_0A, log10_rep_0_22_A_B$ratio_0B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(log10_rep_0_22_A_B$ratio_2_5A, log10_rep_0_22_A_B$ratio_2_5B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(log10_rep_0_22_A_B$ratio_2_4A, log10_rep_0_22_A_B$ratio_2_4B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(log10_rep_0_22_A_B$ratio_2_3A, log10_rep_0_22_A_B$ratio_2_3B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(log10_rep_0_22_A_B$ratio_2_2A, log10_rep_0_22_A_B$ratio_2_2B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(log10_rep_0_22_A_B$ratio_2_1A, log10_rep_0_22_A_B$ratio_2_1B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(log10_rep_0_22_A_B$ratio_20A, log10_rep_0_22_A_B$ratio_20B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(log10_rep_0_22_A_B$ratio_22A, log10_rep_0_22_A_B$ratio_22B, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3))
+  )
+
+write_csv(pearsons_conc, 'pearsons_conc.csv')
+
+#Plot all replicates
+
+p_var_rep_0 <- ggplot(rep_0_22_A_B, aes(ratio_0A, ratio_0B)) +
+  geom_point(alpha = 0.2) +
+  annotation_logticks(scaled = TRUE) +
+  xlab("Expression (a.u.)\nreplicate 1") +
+  ylab("Expression (a.u.)\nreplicate 2") +
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
+  background_grid(major = 'xy', minor = 'none') + 
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_0A,
                  log10_rep_0_22_A_B$ratio_0B,
                  use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_2_5 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_5A, ratio_2_5B)) +
+p_var_rep_2_5 <- ggplot(rep_0_22_A_B, aes(ratio_2_5A, ratio_2_5B)) +
   geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_2_5A,
                  log10_rep_0_22_A_B$ratio_2_5B,
                  use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_2_4 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_4A, ratio_2_4B)) +
+p_var_rep_2_4 <- ggplot(rep_0_22_A_B, aes(ratio_2_4A, ratio_2_4B)) +
   geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_2_4A,
                  log10_rep_0_22_A_B$ratio_2_4B,
                  use = "pairwise.complete.obs", method = "pearson"), 2))) 
 
-p_var_rep_2_3 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_3A, ratio_2_3B)) +
+p_var_rep_2_3 <- ggplot(rep_0_22_A_B, aes(ratio_2_3A, ratio_2_3B)) +
   geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_2_3A,
                  log10_rep_0_22_A_B$ratio_2_3B,
                  use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_2_2 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_2A, ratio_2_2B)) +
+p_var_rep_2_2 <- ggplot(rep_0_22_A_B, aes(ratio_2_2A, ratio_2_2B)) +
   geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_2_2A,
                  log10_rep_0_22_A_B$ratio_2_2B,
                  use = "pairwise.complete.obs", method = "pearson"), 2))) 
 
-p_var_rep_2_1 <- ggplot(log10_rep_0_22_A_B, aes(ratio_2_1A, ratio_2_1B)) +
+p_var_rep_2_1 <- ggplot(rep_0_22_A_B, aes(ratio_2_1A, ratio_2_1B)) +
   geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_2_1A,
                  log10_rep_0_22_A_B$ratio_2_1B,
                  use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_20 <- ggplot(log10_rep_0_22_A_B, aes(ratio_20A, ratio_20B)) +
+p_var_rep_20 <- ggplot(rep_0_22_A_B, aes(ratio_20A, ratio_20B)) +
   geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_20A,
                  log10_rep_0_22_A_B$ratio_20B,
                  use = "pairwise.complete.obs", method = "pearson"), 2)))
 
-p_var_rep_22 <- ggplot(log10_rep_0_22_A_B, aes(ratio_22A, ratio_22B)) +
+p_var_rep_22 <- ggplot(rep_0_22_A_B, aes(ratio_22A, ratio_22B)) +
   geom_point(alpha = 0.2) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
-  scale_y_continuous(breaks = c(-1:1), limits = c(-1.5, 1.5)) + 
+  xlab("Expression (a.u.)\nreplicate 1") +
+  ylab("Expression (a.u.)\nreplicate 2") +
+  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
   background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = -1, y = 1,
+  annotate("text", x = 0.5, y = 10,
            label = paste('r =', round(
              cor(log10_rep_0_22_A_B$ratio_22A,
                  log10_rep_0_22_A_B$ratio_22B,
@@ -1640,14 +1774,14 @@ ggplot(filter(clust_s5_bn_conc_rep_0_22, cluster == 5 | cluster == 7),
   background_grid(major = 'xy', minor = 'none')
 
 
-#Michaelis-Menton Plots---------------------------------------------------------
+#Titration Plots----------------------------------------------------------------
 
 #Performing this on averaged data first, can go back and use both replicates to 
 #fit later
 
 #Subtract ave expression at 0 µM from each variant's ave expression
 
-trans_back_0_norm_conc <- trans_back_norm_rep_0_22 %>%
+trans_back_0_norm_conc <- trans_back_norm_pc_spGl4 %>%
   mutate(ave_ratio_2_5_norm = ave_ratio_2_5_norm - ave_ratio_0_norm) %>%
   mutate(ave_ratio_2_4_norm = ave_ratio_2_4_norm - ave_ratio_0_norm) %>%
   mutate(ave_ratio_2_3_norm = ave_ratio_2_3_norm - ave_ratio_0_norm) %>%
@@ -1657,6 +1791,33 @@ trans_back_0_norm_conc <- trans_back_norm_rep_0_22 %>%
   mutate(ave_ratio_22_norm = ave_ratio_22_norm - ave_ratio_0_norm) %>%
   mutate(ave_ratio_0_norm = ave_ratio_0_norm - ave_ratio_0_norm) %>%
   var_conc_exp()
+
+#plots of titration overall with 1 control (duplicated pGl4, original does not
+#have high expression)
+
+p_titr_pc_back <- ggplot(trans_back_0_norm_conc, aes(conc, ave_ratio_norm)) +
+  geom_line(aes(group = name), alpha = 0.1) +
+  geom_point(data = filter(trans_back_0_norm_conc, 
+                           startsWith(name, 
+                                      'subpool5_no_site_no_site_no_site_no_site_no_site_no_site')),
+             color = 'darkgoldenrod1', shape = 19, stroke = 1.25) +
+  geom_line(data = filter(trans_back_0_norm_conc, 
+                          startsWith(name, 
+                                     'subpool5_no_site_no_site_no_site_no_site_no_site_no_site')),
+            color = 'darkgoldenrod1', size = 1.25) +
+  geom_point(data = filter(trans_back_0_norm_conc, 
+                           startsWith(name, 
+                                      'pGL4.29 Promega 1-63 + 1-87')),
+             color = 'firebrick2', shape = 19, stroke = 1.25) +
+  geom_line(data = filter(trans_back_0_norm_conc, 
+                          startsWith(name, 
+                                     'pGL4.29 Promega 1-63 + 1-87')),
+            color = 'firebrick2', size = 1.25) +
+  ylab('Average normalized\nexpression (a.u.)') +
+  xlab('Forskolin concentration (µM)')
+
+save_plot('plots/p_titr_pc_back.pdf', p_titr_pc_back, scale = 1.3, 
+          base_width = 4, base_height = 2.5)
 
 
 #michaelis model
