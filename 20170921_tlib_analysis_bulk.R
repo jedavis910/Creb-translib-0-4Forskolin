@@ -15,7 +15,7 @@ cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
 
 cbPalette3 <- c('#39568CFF', '#1F968BFF', '#73D055FF')
 
-cbPalette2 <- c('#39568CFF', '#95D840FF')
+forskolin2 <- c('white', 'aquamarine3')
 
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
@@ -331,7 +331,8 @@ back_norm <- function(df1) {
     mutate(ave_ratio_2_2_norm = (ratio_2_2A_norm + ratio_2_2B_norm)/2) %>%
     mutate(ave_ratio_2_1_norm = (ratio_2_1A_norm + ratio_2_1B_norm)/2) %>%
     mutate(ave_ratio_20_norm = (ratio_20A_norm + ratio_20B_norm)/2) %>%
-    mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2)
+    mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2) %>%
+    mutate(induction = ave_ratio_22_norm/ave_ratio_0_norm)
 }
 
 trans_back_norm_rep_0_22 <- back_norm(rep_0_22_A_B)
@@ -432,9 +433,6 @@ var_conc_exp <- function(df) {
   return(df_0_22)
 }
 
-trans_back_norm_conc_log2 <- var_conc_exp(trans_back_norm_rep_0_22) %>%
-  mutate(conc = log2(conc))
-
 trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
 
 trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
@@ -452,60 +450,72 @@ trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
 #of sites. Also took average of log2 med BC expression between biological 
 #replicates for plotting
 
-subpool3 <- 
-  filter(trans_back_norm_rep_0_22, subpool == "subpool3") %>%
-  ungroup() %>%
-  select(-subpool) %>%
-  mutate(name = gsub('2BS ', '', name), 
-         name = gsub(' bp spacing ', '_', name)) %>%
-  separate(name, 
-           into = c("subpool", "spacing", "fluff2", "fluff3", "dist", "fluff4"),
-           sep = "_", convert = TRUE) %>%
-  select(-subpool, -fluff2, -fluff3, -fluff4) %>%
-  mutate(dist = as.integer(dist + 2)) %>%
-  mutate(spacing = 
-           ifelse(spacing != as.integer(0), 
-                  as.integer(spacing + 4), as.integer(spacing))) 
+subpool3 <- function(df) {
+  df <- df %>%
+    filter(subpool == "subpool3") %>%
+    ungroup() %>%
+    select(-subpool) %>%
+    mutate(name = gsub('2BS ', '', name), 
+           name = gsub(' bp spacing ', '_', name)) %>%
+    separate(name, 
+             into = c("subpool", "spacing", "fluff2", "fluff3", "dist", "fluff4"),
+             sep = "_", convert = TRUE) %>%
+    select(-subpool, -fluff2, -fluff3, -fluff4) %>%
+    mutate(dist = as.integer(dist + 2)) %>%
+    mutate(spacing = 
+             ifelse(spacing != as.integer(0), 
+                    as.integer(spacing + 4), as.integer(spacing)))
+}
+
+s3_tidy <- subpool3(trans_back_norm_rep_0_22)
+s3_untidy <- subpool3(trans_back_norm_conc)
+  
 
 #Subpool 5 contains 6 equally spaced sites spaced 13 bp apart and starting from 
 #furthest to the minP. These sites are filled with sites of either the consensus
 #site, a weak site or no site. Both the weak and consensus sites are flanked by 
 #the same flanking sequence. 
 
-subpool5 <- 
-  filter(trans_back_norm_rep_0_22, subpool == "subpool5") %>%
-  ungroup() %>%
-  select(-subpool) %>%
-  mutate(name = gsub('no_site', 'nosite', name)) %>%
-  separate(name, into = c("subpool", "site1", "site2", "site3", "site4", 
-                          "site5", "site6", "fluff"), sep = "_") %>%
-  select(-subpool, -fluff) %>%
-  mutate(consensus = str_detect(site1, "consensus") + 
-           str_detect(site2, "consensus") + 
-           str_detect(site3, "consensus") + 
-           str_detect(site4, "consensus") + 
-           str_detect(site5, "consensus") + 
-           str_detect(site6, "consensus")) %>%
-  mutate(weak = str_detect(site1, "weak") +
-           str_detect(site2, "weak") +
-           str_detect(site3, "weak") +
-           str_detect(site4, "weak") +
-           str_detect(site5, "weak") +
-           str_detect(site6, "weak")) %>%
-  mutate(nosite = str_detect(site1, "nosite") +
-           str_detect(site2, "nosite") +
-           str_detect(site3, "nosite") +
-           str_detect(site4, "nosite") +
-           str_detect(site5, "nosite") +
-           str_detect(site6, "nosite")) %>%
-  mutate(total_sites = consensus + weak) %>%
-  mutate(site_combo = 
-           ifelse(weak == 0 & consensus > 0, 
-                  'consensus', 'mixed')) %>%
-  mutate(site_type = 
-           ifelse(consensus == 0 & weak > 0, 
-                  'weak', site_combo))
+subpool5 <- function(df) {
+  df <- df %>%
+    filter(subpool == "subpool5") %>%
+    ungroup() %>%
+    select(-subpool) %>%
+    mutate(name = gsub('no_site', 'nosite', name)) %>%
+    separate(name, into = c("subpool", "site1", "site2", "site3", "site4", 
+                            "site5", "site6", "fluff"), sep = "_") %>%
+    select(-subpool, -fluff) %>%
+    mutate(consensus = str_detect(site1, "consensus") + 
+             str_detect(site2, "consensus") + 
+             str_detect(site3, "consensus") + 
+             str_detect(site4, "consensus") + 
+             str_detect(site5, "consensus") + 
+             str_detect(site6, "consensus")) %>%
+    mutate(weak = str_detect(site1, "weak") +
+             str_detect(site2, "weak") +
+             str_detect(site3, "weak") +
+             str_detect(site4, "weak") +
+             str_detect(site5, "weak") +
+             str_detect(site6, "weak")) %>%
+    mutate(nosite = str_detect(site1, "nosite") +
+             str_detect(site2, "nosite") +
+             str_detect(site3, "nosite") +
+             str_detect(site4, "nosite") +
+             str_detect(site5, "nosite") +
+             str_detect(site6, "nosite")) %>%
+    mutate(total_sites = consensus + weak) %>%
+    mutate(site_combo = 
+             ifelse(weak == 0 & consensus > 0, 
+                    'consensus', 'mixed')) %>%
+    mutate(site_type = 
+             ifelse(consensus == 0 & weak > 0, 
+                    'weak', site_combo))
+}
 
+s5_tidy <- subpool5(trans_back_norm_rep_0_22)
+s5_untidy <- subpool5(trans_back_norm_conc)
+  
+#Do I still look at controls?
 controls <- 
   filter(rep_0_22_A_B, subpool == "control") %>%
   ungroup() %>%
@@ -595,6 +605,94 @@ p_subpool3_spa_back_norm_smooth <- ggplot(subpool3_log2_norm, aes(x = dist)) +
 save_plot('plots/p_subpool3_spa_back_norm_smooth.png', 
           p_subpool3_spa_back_norm_smooth, 
           base_width = 46, base_height = 17, scale = 0.35)
+
+#Subpool 5
+
+p_s5_consnum_0_4 <- s5_untidy %>%
+  filter(weak == 0) %>%
+  filter(conc == 0 | conc == 4) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  group_by(background, consensus, conc) %>%
+  mutate(med_back_cons_conc = median(ave_ratio_norm)) %>%
+  ungroup() %>%
+  ggplot(aes(as.factor(consensus), ave_ratio_norm, fill = as.factor(conc))) +
+  geom_boxplot(outlier.size = 0.7, size = 0.3, 
+               outlier.alpha = 0.5, position = position_dodge(0.75),
+               show.legend = TRUE) + 
+  scale_fill_manual(values = forskolin2, name = 'forskolin') +
+  facet_grid(~ background) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
+  panel_border(colour = 'black') +
+  scale_y_log10() +
+  annotation_logticks(sides = 'l') +
+  ylab('Average normalized\nexpression (a.u.)') +
+  xlab('Consensus sites')
+
+save_plot('plots/p_s5_consnum_0_4.pdf', p_s5_consnum_0_4, scale = 1.3,
+          base_width = 5, base_height = 2.5)
+
+p_s5_weaknum_0_4 <- s5_untidy %>%
+  filter(consensus == 0) %>%
+  filter(conc == 0 | conc == 4) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  group_by(background, consensus, conc) %>%
+  mutate(med_back_cons_conc = median(ave_ratio_norm)) %>%
+  ungroup() %>%
+  ggplot(aes(as.factor(weak), ave_ratio_norm, fill = as.factor(conc))) +
+  geom_boxplot(outlier.size = 0.7, size = 0.3, 
+               outlier.alpha = 0.5, position = position_dodge(0.75),
+               show.legend = TRUE) + 
+  scale_fill_manual(values = forskolin2, name = 'forskolin') +
+  facet_grid(~ background) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
+  panel_border(colour = 'black') +
+  xlab('Weak sites') +
+  ylab('Average normalized\nexpression (a.u.)') +
+  scale_y_continuous(limits = c(0.75, 2), breaks = c(0.75, 1, 1.25, 1.5))
+
+save_plot('plots/p_s5_weaknum_0_4.pdf', p_s5_weaknum_0_4, scale = 1.3,
+          base_width = 5, base_height = 2.5)
+
+#in order to facet by site_type, need to duplicate the 6 nosite baseline in each
+#category
+
+s5_dup_6no <- function(df) {
+  no_cons <- df %>%
+    filter(total_sites == 0) %>%
+    mutate(site_type = 'consensus')
+  no_weak <- df %>%
+    filter(total_sites == 0) %>%
+    mutate(site_type = 'weak')
+  no_join_rm_mixed <- rbind(no_cons, no_weak, df) %>%
+    filter(site_type != 'mixed')
+  return(no_join_rm_mixed)
+}
+
+p_s5_sitenum_ind <- s5_tidy %>%
+  s5_dup_6no() %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(as.factor(total_sites), induction)) +
+  geom_boxplot(aes(color = background), outlier.size = 0.7, size = 0.3, 
+               outlier.alpha = 0.5, position = position_dodge(1),
+               show.legend = TRUE) +
+  scale_y_log10() +
+  facet_grid(site_type ~ .) +
+  panel_border() +
+  annotation_logticks(sides = 'l') +
+  scale_color_manual(values = cbPalette3) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  background_grid(major = 'y', minor = 'none') + 
+  geom_vline(xintercept = c(1.5:6.5), alpha = 0.5) +
+  ylab('Induction (a.u.)') +
+  xlab('Number of total sites')
 
 
 #BC analysis--------------------------------------------------------------------
@@ -698,189 +796,59 @@ var_conc_ratio <- function(df) {
 
 rep_norm_ratio_conc <- var_conc_ratio(trans_back_norm_pc_spGl4)
 
-p_var_rep_04 <- ggplot(rep_norm_ratio_conc, aes(ratio_A_norm, ratio_B_norm)) +
+p_var_rep_all <- ggplot(rep_norm_ratio_conc, aes(ratio_A_norm, ratio_B_norm)) +
   facet_rep_wrap(~ conc, nrow = 4, ncol = 2) +
-  geom_point(alpha = 0.1) +
+  geom_point(alpha = 0.1, size = 0.5) +
+  geom_point(data = filter(rep_norm_ratio_conc, 
+                           grepl(
+                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
+                             name)), 
+             fill = 'orange', shape = 21, size = 1.75) + 
+  geom_point(data = filter(rep_norm_ratio_conc, name == 'pGL4.29 Promega 1-63 + 1-87_s pGl4'), 
+             fill = 'red', shape = 21, size = 1.75) +
   annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
+  xlab("Normalized expression (a.u.)\nreplicate 1") +
+  ylab("Normalized expression (a.u.) replicate 2") +
   scale_x_log10(limits = c(0.5, 175), breaks = c(1, 10, 100)) + 
   scale_y_log10(limits = c(0.5, 175), breaks = c(1, 10, 100)) +
   background_grid(major = 'xy', minor = 'none') + 
   theme(strip.background = element_rect(colour="black", fill="white"),
         axis.line.y = element_line(), panel.spacing.x=unit(1, "lines"))
 
-save_plot('plots/log10_04_rep.pdf', p_var_rep_04, scale = 1.3, 
-          base_width = 4, base_height = 2.25)
+save_plot('plots/var_rep_all.pdf', p_var_rep_all, scale = 1.3, 
+          base_width = 2.5, base_height = 5)
 
-
-#Or just plot induced
-
-p_var_rep_22 <- ggplot(rep_0_22_A_B, aes(ratio_22A, ratio_22B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.)\nreplicate 1") +
-  ylab("Expression (a.u.)\nreplicate 2") +
-  ggtitle('4 µM') +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_22A,
-                 log10_rep_0_22_A_B$ratio_22B,
-                 use = "pairwise.complete.obs", method = "pearson"), 3)))
-
-save_plot('plots/p_var_rep_22.pdf', p_var_rep_22, scale = 1.3,
-          base_width = 2.5, base_height = 2.5)
+log10_trans_back_norm_pc_spGl4 <- var_log10(trans_back_norm_pc_spGl4)
 
 pearsons_conc <- tibble(
   conc = c(0, 2^-5, 2^-4, 2^-3, 2^-2, 2^-1, 2^0, 2^2),
-  pearsons = c(round(cor(log10_rep_0_22_A_B$ratio_0A, log10_rep_0_22_A_B$ratio_0B, 
+  pearsons = c(round(cor(log10_trans_back_norm_pc_spGl4$ratio_0A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_0B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(log10_rep_0_22_A_B$ratio_2_5A, log10_rep_0_22_A_B$ratio_2_5B, 
+               round(cor(log10_trans_back_norm_pc_spGl4$ratio_2_5A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_2_5B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(log10_rep_0_22_A_B$ratio_2_4A, log10_rep_0_22_A_B$ratio_2_4B, 
+               round(cor(log10_trans_back_norm_pc_spGl4$ratio_2_4A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_2_4B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(log10_rep_0_22_A_B$ratio_2_3A, log10_rep_0_22_A_B$ratio_2_3B, 
+               round(cor(log10_trans_back_norm_pc_spGl4$ratio_2_3A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_2_3B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(log10_rep_0_22_A_B$ratio_2_2A, log10_rep_0_22_A_B$ratio_2_2B, 
+               round(cor(log10_trans_back_norm_pc_spGl4$ratio_2_2A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_2_2B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(log10_rep_0_22_A_B$ratio_2_1A, log10_rep_0_22_A_B$ratio_2_1B, 
+               round(cor(log10_trans_back_norm_pc_spGl4$ratio_2_1A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_2_1B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(log10_rep_0_22_A_B$ratio_20A, log10_rep_0_22_A_B$ratio_20B, 
+               round(cor(log10_trans_back_norm_pc_spGl4$ratio_20A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_20B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(log10_rep_0_22_A_B$ratio_22A, log10_rep_0_22_A_B$ratio_22B, 
+               round(cor(log10_trans_back_norm_pc_spGl4$ratio_22A_norm, 
+                         log10_trans_back_norm_pc_spGl4$ratio_22B_norm, 
                          use = "pairwise.complete.obs", method = "pearson"), 3))
   )
 
 write_csv(pearsons_conc, 'pearsons_conc.csv')
-
-#Plot all replicates
-
-p_var_rep_0 <- ggplot(rep_0_22_A_B, aes(ratio_0A, ratio_0B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.)\nreplicate 1") +
-  ylab("Expression (a.u.)\nreplicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_0A,
-                 log10_rep_0_22_A_B$ratio_0B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2)))
-
-p_var_rep_2_5 <- ggplot(rep_0_22_A_B, aes(ratio_2_5A, ratio_2_5B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_2_5A,
-                 log10_rep_0_22_A_B$ratio_2_5B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2)))
-
-p_var_rep_2_4 <- ggplot(rep_0_22_A_B, aes(ratio_2_4A, ratio_2_4B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_2_4A,
-                 log10_rep_0_22_A_B$ratio_2_4B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2))) 
-
-p_var_rep_2_3 <- ggplot(rep_0_22_A_B, aes(ratio_2_3A, ratio_2_3B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_2_3A,
-                 log10_rep_0_22_A_B$ratio_2_3B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2)))
-
-p_var_rep_2_2 <- ggplot(rep_0_22_A_B, aes(ratio_2_2A, ratio_2_2B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_2_2A,
-                 log10_rep_0_22_A_B$ratio_2_2B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2))) 
-
-p_var_rep_2_1 <- ggplot(rep_0_22_A_B, aes(ratio_2_1A, ratio_2_1B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_2_1A,
-                 log10_rep_0_22_A_B$ratio_2_1B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2)))
-
-p_var_rep_20 <- ggplot(rep_0_22_A_B, aes(ratio_20A, ratio_20B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_20A,
-                 log10_rep_0_22_A_B$ratio_20B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2)))
-
-p_var_rep_22 <- ggplot(rep_0_22_A_B, aes(ratio_22A, ratio_22B)) +
-  geom_point(alpha = 0.2) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.)\nreplicate 1") +
-  ylab("Expression (a.u.)\nreplicate 2") +
-  scale_x_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.05, 50), breaks = c(0.1, 1, 10)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.5, y = 10,
-           label = paste('r =', round(
-             cor(log10_rep_0_22_A_B$ratio_22A,
-                 log10_rep_0_22_A_B$ratio_22B,
-                 use = "pairwise.complete.obs", method = "pearson"), 2)))
-
-p_log10_var_rep_grid <- plot_grid(p_var_rep_0, p_var_rep_2_5, p_var_rep_2_4, 
-                                  p_var_rep_2_3, p_var_rep_2_2, p_var_rep_2_1, 
-                                  p_var_rep_20, p_var_rep_22, 
-                                  labels = c("    0 µM", "2^-5 µM", "2^-4 µM", 
-                                             "2^-3 µM", "2^-2 µM", "2^-1 µM", 
-                                             " 2^0 µM", " 2^2 µM"),
-                                  nrow = 3, ncol = 3, align = 'hv', 
-                                  hjust = -2.5, vjust = 0.5, scale = 0.9)
-
-save_plot('plots/p_log10_var_rep_grid.png', 
-          p_log10_var_rep_grid, base_height = 12, base_width = 12)
 
 
 #Comparison to integrated-------------------------------------------------------------------
@@ -1817,7 +1785,7 @@ p_titr_pc_back <- ggplot(trans_back_0_norm_conc, aes(conc, ave_ratio_norm)) +
   xlab('Forskolin concentration (µM)')
 
 save_plot('plots/p_titr_pc_back.pdf', p_titr_pc_back, scale = 1.3, 
-          base_width = 4, base_height = 2.5)
+          base_width = 3.75, base_height = 2.5)
 
 
 #michaelis model
