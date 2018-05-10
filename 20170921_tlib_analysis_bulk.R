@@ -13,6 +13,9 @@ library(lemon)
 cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
                 '#B8DE29FF', '#FDE725FF')
 
+cbPalette7_grad_light <- c('white', 'khaki1', '#B8DE29FF', 'springgreen3', 
+                           'cadetblue2', 'deepskyblue3', 'blue4')
+
 cbPalette3 <- c('#39568CFF', '#1F968BFF', '#73D055FF')
 
 forskolin2 <- c('white', 'aquamarine3')
@@ -507,9 +510,12 @@ subpool5 <- function(df) {
     mutate(site_combo = 
              ifelse(weak == 0 & consensus > 0, 
                     'consensus', 'mixed')) %>%
-    mutate(site_type = 
+    mutate(site_combo = 
              ifelse(consensus == 0 & weak > 0, 
-                    'weak', site_combo))
+                    'weak', site_combo)) %>%
+    mutate(site_combo = 
+             ifelse(consensus == 0 & weak == 0, 
+                    'none', site_combo))
 }
 
 s5_tidy <- subpool5(trans_back_norm_rep_0_22)
@@ -608,14 +614,13 @@ save_plot('plots/p_subpool3_spa_back_norm_smooth.png',
 
 #Subpool 5
 
+#Concensus expression uninduced and induced
+
 p_s5_consnum_0_4 <- s5_untidy %>%
   filter(weak == 0) %>%
   filter(conc == 0 | conc == 4) %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  group_by(background, consensus, conc) %>%
-  mutate(med_back_cons_conc = median(ave_ratio_norm)) %>%
-  ungroup() %>%
   ggplot(aes(as.factor(consensus), ave_ratio_norm, fill = as.factor(conc))) +
   geom_boxplot(outlier.size = 0.7, size = 0.3, 
                outlier.alpha = 0.5, position = position_dodge(0.75),
@@ -634,14 +639,13 @@ p_s5_consnum_0_4 <- s5_untidy %>%
 save_plot('plots/p_s5_consnum_0_4.pdf', p_s5_consnum_0_4, scale = 1.3,
           base_width = 5, base_height = 2.5)
 
+#Weak expression uninduced and induced
+
 p_s5_weaknum_0_4 <- s5_untidy %>%
   filter(consensus == 0) %>%
   filter(conc == 0 | conc == 4) %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  group_by(background, consensus, conc) %>%
-  mutate(med_back_cons_conc = median(ave_ratio_norm)) %>%
-  ungroup() %>%
   ggplot(aes(as.factor(weak), ave_ratio_norm, fill = as.factor(conc))) +
   geom_boxplot(outlier.size = 0.7, size = 0.3, 
                outlier.alpha = 0.5, position = position_dodge(0.75),
@@ -659,40 +663,83 @@ p_s5_weaknum_0_4 <- s5_untidy %>%
 save_plot('plots/p_s5_weaknum_0_4.pdf', p_s5_weaknum_0_4, scale = 1.3,
           base_width = 5, base_height = 2.5)
 
-#in order to facet by site_type, need to duplicate the 6 nosite baseline in each
-#category
+#Consensus with weak induced expression
 
-s5_dup_6no <- function(df) {
-  no_cons <- df %>%
-    filter(total_sites == 0) %>%
-    mutate(site_type = 'consensus')
-  no_weak <- df %>%
-    filter(total_sites == 0) %>%
-    mutate(site_type = 'weak')
-  no_join_rm_mixed <- rbind(no_cons, no_weak, df) %>%
-    filter(site_type != 'mixed')
-  return(no_join_rm_mixed)
-}
-
-p_s5_sitenum_ind <- s5_tidy %>%
-  s5_dup_6no() %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(as.factor(total_sites), induction)) +
-  geom_boxplot(aes(color = background), outlier.size = 0.7, size = 0.3, 
+p_s5_num_cons_num_weak <- s5_tidy %>%
+  filter(background == 's pGl4') %>%
+  ggplot(aes(as.factor(consensus), ave_ratio_22_norm)) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 0.7, size = 0.3, 
                outlier.alpha = 0.5, position = position_dodge(1),
                show.legend = TRUE) +
-  scale_y_log10() +
-  facet_grid(site_type ~ .) +
-  panel_border() +
+  scale_y_log10() + 
+  panel_border(colour = 'black') +
   annotation_logticks(sides = 'l') +
-  scale_color_manual(values = cbPalette3) +
+  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light)  +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white")) +
   background_grid(major = 'y', minor = 'none') + 
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.5) +
-  ylab('Induction (a.u.)') +
-  xlab('Number of total sites')
+  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
+  ylab('Average normalized\n expression (a.u.)') +
+  xlab('Number of consensus sites')
+
+save_plot('plots/p_s5_num_cons_num_weak.pdf', p_s5_num_cons_num_weak,
+          scale = 1.3, base_height = 2.25, base_width = 5.25)
+
+p_s5_num_cons_num_weak_allback_4 <- s5_tidy %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(as.factor(consensus), ave_ratio_22_norm)) +
+  facet_grid(background ~ .) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 0.7, size = 0.3, 
+               outlier.alpha = 0.5, position = position_dodge(1),
+               show.legend = TRUE) +
+  scale_y_log10() + 
+  panel_border(colour = 'black') +
+  annotation_logticks(sides = 'l') +
+  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light)  +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  background_grid(major = 'y', minor = 'none') + 
+  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
+  ylab('Average normalized\n expression (a.u.)') +
+  xlab('Number of consensus sites')
+
+save_plot('plots/p_s5_num_cons_num_weak_allback_4.pdf', 
+          p_s5_num_cons_num_weak_allback_4,
+          scale = 1.3, base_height = 4.75, base_width = 5.25)
+
+p_s5_num_cons_num_weak_allback_0 <- s5_tidy %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(as.factor(consensus), ave_ratio_0_norm)) +
+  facet_grid(background ~ .) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 0.7, size = 0.3, 
+               outlier.alpha = 0.5, position = position_dodge(1),
+               show.legend = TRUE) +
+  panel_border(colour = 'black') +
+  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light)  +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  background_grid(major = 'y', minor = 'none') + 
+  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
+  ylab('Average normalized\n expression (a.u.)') +
+  xlab('Number of consensus sites')
+
+save_plot('plots/p_s5_num_cons_num_weak_allback_0.pdf', 
+          p_s5_num_cons_num_weak_allback_0,
+          scale = 1.3, base_height = 4.75, base_width = 5.25)
+
+#Looking at individual site expression
+
+s5_single_site_exp <- s5_untidy %>%
+  filter(site_type != 'mixed') %>%
+  mutate(site1 = str_detect(site1, "consensus") * 1) %>%
+  mutate(site2 = str_detect(site2, "consensus") * 2) %>%
+  mutate(site3 = str_detect(site3, "consensus") * 3) %>%
+  mutate(site4 = str_detect(site4, "consensus") * 4) %>%
+  mutate(site5 = str_detect(site5, "consensus") * 5) %>%
+  mutate(site6 = str_detect(site6, "consensus") * 6) %>%
+  mutate(site = site1 + site2 + site3 + site4 + site5 + site6)
 
 
 #BC analysis--------------------------------------------------------------------
