@@ -9,14 +9,16 @@ library(splines)
 library(broom)
 library(GGally)
 library(lemon)
+library(devtools)
+library(updateR)
 
 cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
                 '#B8DE29FF', '#FDE725FF')
 
-cbPalette7_grad_light <- c('white', 'khaki1', '#B8DE29FF', 'springgreen3', 
-                           'cadetblue2', 'deepskyblue3', 'blue4')
+cbPalette7_grad_light <- c('white', '#FDE725FF', '#B8DE29FF', '#55C667FF', 
+                           '#1F968BFF', '#39568CFF', '#482677FF')
 
-cbPalette3 <- c('#39568CFF', '#1F968BFF', '#73D055FF')
+cbPalette3 <- c('grey20', 'springgreen3', 'deepskyblue3')
 
 forskolin2 <- c('white', 'aquamarine3')
 
@@ -535,84 +537,256 @@ controls <-
   mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2)
   
 
-#Plot subpool expression features-----------------------------------------------
+#Plot subpool3 expression features----------------------------------------------
 
-#Subpool 3
+#plot every background and spacing 5-20
 
-p_subpool3_spa_back_norm <- ggplot(subpool3_log2_norm, aes(x = dist)) + 
-  geom_point(aes(y = ave_ratio_0_norm), alpha = 0.5, size = 1.5, 
-             color = '#440154FF') +
-  geom_point(aes(y = ave_ratio_2_5_norm), alpha = 0.5, size = 1.5, 
-             color = '#482677FF') +
-  geom_point(aes(y = ave_ratio_2_4_norm), alpha = 0.5, size = 1.5, 
-             color = '#39568CFF') +
-  geom_point(aes(y = ave_ratio_2_3_norm), alpha = 0.5, size = 1.5, 
-             color = '#2D708EFF') +
-  geom_point(aes(y = ave_ratio_2_2_norm), alpha = 0.5, size = 1.5, 
-             color = '#1F968BFF') +
-  geom_point(aes(y = ave_ratio_2_1_norm), alpha = 0.5, size = 1.5, 
-             color = '#29AF7FFF') +
-  geom_point(aes(y = ave_ratio_20_norm), alpha = 0.5, size = 1.5, 
-             color = '#73D055FF') +
-  geom_point(aes(y = ave_ratio_22_norm), alpha = 0.5, size = 1.5, 
-             color = '#B8DE29FF') +
+p_subpool3_spa_back_norm <- s3_untidy %>%
+  filter(conc == 4 & spacing != 0) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm)) + 
+  geom_point(alpha = 0.5, size = 1.2, color = 'black') +
+  geom_smooth(color = 'black', span = 0.1, size = 0.4, se = FALSE) +
   facet_grid(spacing ~ background) + 
-  ylab('Log2 normalized average sum BC expression') + 
-  panel_border() +
-  background_grid(major = 'xy', minor = 'none') +
-  scale_x_continuous(
-    "Distance from First Site to Proximal Promoter End (bp)", 
-    breaks = seq(from = 0, to = 150, by = 10))
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  scale_y_log10() +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 150, by = 10)) +
+  theme(legend.position = 'right',
+        strip.background = element_rect(colour="black", fill="white"))
 
-save_plot('plots/p_subpool3_spa_back_norm.png', p_subpool3_spa_back_norm, 
-          base_width = 46, base_height = 17, scale = 0.35)
+save_plot('plots/p_subpool3_spa_back_norm.pdf', p_subpool3_spa_back_norm,
+          scale = 1.3, base_height = 4, base_width = 11)
 
-p_subpool3_spa_back_norm_smooth <- ggplot(subpool3_log2_norm, aes(x = dist)) + 
-  geom_point(aes(y = ave_ratio_0_norm), alpha = 0, size = 1.5, 
-             color = '#440154FF') +
-  geom_smooth(aes(y = ave_ratio_0_norm), 
-              span = 0.1, size = 0.7, color = '#440154FF', se = FALSE) +
-  geom_point(aes(y = ave_ratio_2_5_norm), alpha = 0, size = 1.5, 
-             color = '#482677FF') +
-  geom_smooth(aes(y = ave_ratio_2_5_norm), 
-              span = 0.1, size = 0.7, color = '#482677FF', se = FALSE) +
-  geom_point(aes(y = ave_ratio_2_4_norm), alpha = 0, size = 1.5, 
-             color = '#39568CFF') +
-  geom_smooth(aes(y = ave_ratio_2_4_norm), 
-              span = 0.1, size = 0.7, color = '#39568CFF', se = FALSE) +
-  geom_point(aes(y = ave_ratio_2_3_norm), alpha = 0, size = 1.5, 
-             color = '#2D708EFF') +
-  geom_smooth(aes(y = ave_ratio_2_3_norm), 
-              span = 0.1, size = 0.7, color = '#2D708EFF', se = FALSE) +
-  geom_point(aes(y = ave_ratio_2_2_norm), alpha = 0, size = 1.5, 
-             color = '#1F968BFF') +
-  geom_smooth(aes(y = ave_ratio_2_2_norm), 
-              span = 0.1, size = 0.7, color = '#1F968BFF', se = FALSE) +
-  geom_point(aes(y = ave_ratio_2_1_norm), alpha = 0, size = 1.5, 
-             color = '#29AF7FFF') +
-  geom_smooth(aes(y = ave_ratio_2_1_norm), 
-              span = 0.1, size = 0.7, color = '#29AF7FFF', se = FALSE) +
-  geom_point(aes(y = ave_ratio_20_norm), alpha = 0, size = 1.5, 
-             color = '#73D055FF') +
-  geom_smooth(aes(y = ave_ratio_20_norm), 
-              span = 0.1, size = 0.7, color = '#73D055FF', se = FALSE) +
-  geom_point(aes(y = ave_ratio_22_norm), alpha = 0, size = 1.5, 
-             color = '#B8DE29FF') +
-  geom_smooth(aes(y = ave_ratio_22_norm), 
-              span = 0.1, size = 0.7, color = '#B8DE29FF', se = FALSE) +
-  facet_grid(spacing ~ background) + 
-  ylab('Log2 normalized average sum BC expression') + 
-  panel_border() +
-  background_grid(major = 'xy', minor = 'none') +
-  scale_x_continuous(
-    "Distance from First Site to Proximal Promoter End (bp)", 
-    breaks = seq(from = 0, to = 150, by = 10))
+#just background v chr9 plot
 
-save_plot('plots/p_subpool3_spa_back_norm_smooth.png', 
-          p_subpool3_spa_back_norm_smooth, 
-          base_width = 46, base_height = 17, scale = 0.35)
+p_subpool3_spa_4_vchr9 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & (spacing == 5 | spacing == 15)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm)) + 
+  geom_point(alpha = 0.5, size = 1.2, color = 'black') +
+  geom_smooth(color = 'black', span = 0.1, size = 0.4, se = FALSE) +
+  facet_grid(spacing ~ .) + 
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  scale_y_log10(limits = c(1, 15)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+    breaks = seq(from = 0, to = 150, by = 10)) +
+  theme(legend.position = 'right',
+        strip.background = element_rect(colour="black", fill="white"))
 
-#Subpool 5
+save_plot('plots/p_subpool3_spa_4_vchr9.pdf', p_subpool3_spa_4_vchr9,
+          scale = 1.3, base_height = 3, base_width = 4.75)
+
+#v chr9 spacing overlay plots
+
+test <- s3_untidy %>%
+  filter(background == 'v chr9' & conc == 4) %>%
+  group_by(spacing, dist) %>%
+  arrange(spacing, dist) %>%
+  select(-most_common)
+
+p_subpool3_spa_4_vchr9_5_10 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & dist < 60 & (spacing == 5 | spacing == 10)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
+  scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = seq(from = 14, to = 24, by = 10), color = 'gray20', 
+             linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = seq(from = 18, to = 28, by = 10), 
+             color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
+  scale_y_log10(limits = c(1, 13)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 60, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+p_subpool3_spa_4_vchr9_5_15 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & dist < 60 & (spacing == 5 | spacing == 15)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
+  scale_color_manual(values = c('gray20', 'firebrick3'), 
+                     name = 'spacing (bp)') +
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = seq(from = 14, to = 24, by = 10), color = 'gray20', 
+             linetype = 2, alpha = 0.5) +
+  scale_y_log10(limits = c(1, 13)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 60, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+p_subpool3_spa_4_vchr9_10_20 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & dist < 60 & (spacing == 10 | spacing == 20)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
+  scale_color_manual(values = c('dodgerblue3', '#55C667FF'), name = 'spacing (bp)') +
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = seq(from = 18, to = 28, by = 10), 
+             color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
+  scale_y_log10(limits = c(1, 13)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 60, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_subpool3_spa_4_vchr9_5_10.pdf', p_subpool3_spa_4_vchr9_5_10, 
+          scale = 1.3, base_height = 1.75, base_width = 4.25)
+
+save_plot('plots/p_subpool3_spa_4_vchr9_5_15.pdf', p_subpool3_spa_4_vchr9_5_15, 
+          scale = 1.3, base_height = 1.75, base_width = 4.25)
+
+save_plot('plots/p_subpool3_spa_4_vchr9_10_20.pdf', 
+          p_subpool3_spa_4_vchr9_10_20, scale = 1.3, 
+          base_height = 1.75, base_width = 4.25)
+
+#plot spacing overlays in s pgl4 background
+
+test <- s3_untidy %>%
+  filter(background == 's pGl4' & conc == 4)
+
+p_subpool3_spa_4_spgl4_5_10 <- s3_untidy %>%
+  filter(conc == 4 & background == 's pGl4' & dist < 60 & (spacing == 5 | spacing == 10)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
+  scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = seq(from = 30, to = 40, by = 10), color = 'gray20', 
+             linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = seq(from = 35, to = 45, by = 10), 
+             color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
+  scale_y_log10(limits = c(1, 10)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 60, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+p_subpool3_spa_4_spgl4_5_15 <- s3_untidy %>%
+  filter(conc == 4 & background == 's pGl4' & dist < 60 & (spacing == 5 | spacing == 15)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
+  scale_color_manual(values = c('gray20', 'firebrick3'), name = 'spacing (bp)') +
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = seq(from = 30, to = 40, by = 10), color = 'gray20', 
+             linetype = 2, alpha = 0.5) +
+  scale_y_log10(limits = c(1, 10)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 60, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+p_subpool3_spa_4_spgl4_10_20 <- s3_untidy %>%
+  filter(conc == 4 & background == 's pGl4' & dist < 60 & (spacing == 10 | spacing == 20)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
+  scale_color_manual(values = c('dodgerblue3', '#55C667FF'), name = 'spacing (bp)') +
+  ylab('Average normalized\nexpression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = seq(from = 35, to = 45, by = 10), 
+             color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
+  scale_y_log10(limits = c(1, 10)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 60, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_subpool3_spa_4_spgl4_5_10.pdf', 
+          p_subpool3_spa_4_spgl4_5_10, 
+          base_width = 4.25, base_height = 1.75, scale = 1.3)
+
+save_plot('plots/p_subpool3_spa_4_spgl4_5_15.pdf', 
+          p_subpool3_spa_4_spgl4_5_15, 
+          base_width = 4.25, base_height = 1.75, scale = 1.3)
+
+save_plot('plots/p_subpool3_spa_4_spgl4_10_20.pdf', 
+          p_subpool3_spa_4_spgl4_10_20, 
+          base_width = 4.25, base_height = 1.75, scale = 1.3)
+
+#plot distance effects
+
+s3_untidy_bin20bp <- s3_untidy %>%
+  mutate(bin = cut(dist, seq(from = 0, to = 140, by = 20),
+                   labels = c('0-20', '20-40', '40-60', '60-80',
+                              '80-100', '100-120', '120-140')))
+
+spacing_palette <- c('#440154FF', '#39568CFF', '#238A8DFF', '#29AF7FFF', 
+                     '#73D055FF')
+
+p_subpool3_dist_4_bin20bp_back <- s3_untidy_bin20bp %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  filter(conc == 4 & spacing != 0 & bin != '120-140') %>%
+  ggplot(aes(bin, ave_ratio_norm)) +
+  facet_grid(background ~ .) +
+  geom_jitter(aes(color = as.factor(spacing)), 
+              position=position_jitter(width=0.3, height=0), alpha = 0.75) +
+  geom_boxplot(outlier.shape=NA, size = 0.5, position = position_dodge(1),
+               show.legend = FALSE, alpha = 0) +
+  scale_color_manual(values = spacing_palette, name = 'spacing (bp)') +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(), 
+        strip.background = element_rect(colour="black", fill="white")) + 
+  scale_y_log10(limits = c(1,50)) +
+  annotation_logticks(sides = 'l') +
+  panel_border(colour = 'black') +
+  ylab('Average normalized\nexpression (a.u.)') +
+  xlab('Distance along background (bp)')
+
+save_plot('plots/p_subpool3_dist_4_bin20bp_back.pdf', 
+          p_subpool3_dist_4_bin20bp_back, scale = 1.3,
+          base_width = 4.5, base_height = 4.5)
+
+#plot spacing effects
+
+p_subpool3_space_4_back <- s3_untidy %>%
+  filter(conc == 4 & spacing != 0 & dist < 40) %>%
+  ggplot(aes(as.factor(spacing), ave_ratio_norm)) +
+  facet_grid(~ background) +
+  geom_boxplot(outlier.size = 1, outlier.alpha = 0.75, size = 0.5, 
+               position = position_dodge(1)) +
+  theme(axis.ticks.x = element_blank(), 
+        strip.background = element_rect(colour="black", fill="white")) + 
+  scale_y_log10() +
+  panel_border(colour = 'black') +
+  annotation_logticks(sides = 'l') +
+  ylab('Average normalized\nexpression (a.u.)') +
+  xlab('Spacing (bp)')
+
+save_plot('plots/p_subpool3_space_4_back.pdf', p_subpool3_space_4_back,
+          scale = 1.3, base_width = 4.5, base_height = 2)
+
+
+
+
+#Plot subpool5 expression features----------------------------------------------
 
 #Concensus expression uninduced and induced
 
@@ -622,8 +796,8 @@ p_s5_consnum_0_4 <- s5_untidy %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   ggplot(aes(as.factor(consensus), ave_ratio_norm, fill = as.factor(conc))) +
-  geom_boxplot(outlier.size = 0.7, size = 0.3, 
-               outlier.alpha = 0.5, position = position_dodge(0.75),
+  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
+               outlier.alpha = 1, position = position_dodge(0.75),
                show.legend = TRUE) + 
   scale_fill_manual(values = forskolin2, name = 'forskolin') +
   facet_grid(~ background) +
@@ -647,8 +821,8 @@ p_s5_weaknum_0_4 <- s5_untidy %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   ggplot(aes(as.factor(weak), ave_ratio_norm, fill = as.factor(conc))) +
-  geom_boxplot(outlier.size = 0.7, size = 0.3, 
-               outlier.alpha = 0.5, position = position_dodge(0.75),
+  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
+               outlier.alpha = 1, position = position_dodge(0.75),
                show.legend = TRUE) + 
   scale_fill_manual(values = forskolin2, name = 'forskolin') +
   facet_grid(~ background) +
@@ -668,13 +842,14 @@ save_plot('plots/p_s5_weaknum_0_4.pdf', p_s5_weaknum_0_4, scale = 1.3,
 p_s5_num_cons_num_weak <- s5_tidy %>%
   filter(background == 's pGl4') %>%
   ggplot(aes(as.factor(consensus), ave_ratio_22_norm)) +
-  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 0.7, size = 0.3, 
-               outlier.alpha = 0.5, position = position_dodge(1),
-               show.legend = TRUE) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 1, 
+               position = position_dodge(0.75), show.legend = TRUE) +
   scale_y_log10() + 
   panel_border(colour = 'black') +
   annotation_logticks(sides = 'l') +
-  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light)  +
+  scale_fill_manual(name = 'number of\nweak sites', 
+                    values = cbPalette7_grad_light) +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white")) +
   background_grid(major = 'y', minor = 'none') + 
@@ -690,9 +865,9 @@ p_s5_num_cons_num_weak_allback_4 <- s5_tidy %>%
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   ggplot(aes(as.factor(consensus), ave_ratio_22_norm)) +
   facet_grid(background ~ .) +
-  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 0.7, size = 0.3, 
-               outlier.alpha = 0.5, position = position_dodge(1),
-               show.legend = TRUE) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 1, 
+               position = position_dodge(0.75), show.legend = TRUE) +
   scale_y_log10() + 
   panel_border(colour = 'black') +
   annotation_logticks(sides = 'l') +
@@ -713,11 +888,11 @@ p_s5_num_cons_num_weak_allback_0 <- s5_tidy %>%
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   ggplot(aes(as.factor(consensus), ave_ratio_0_norm)) +
   facet_grid(background ~ .) +
-  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 0.7, size = 0.3, 
-               outlier.alpha = 0.5, position = position_dodge(1),
-               show.legend = TRUE) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 1, 
+               position = position_dodge(0.75), show.legend = TRUE) +
   panel_border(colour = 'black') +
-  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light)  +
+  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light) +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white")) +
   background_grid(major = 'y', minor = 'none') + 
@@ -731,15 +906,47 @@ save_plot('plots/p_s5_num_cons_num_weak_allback_0.pdf',
 
 #Looking at individual site expression
 
+test <- s5_untidy %>%
+  filter(conc == 4 & consensus >=5 & background == 'v chr5' & weak == 0) %>%
+  write_csv('s5_sitedesign.csv')
+
 s5_single_site_exp <- s5_untidy %>%
-  filter(site_type != 'mixed') %>%
-  mutate(site1 = str_detect(site1, "consensus") * 1) %>%
-  mutate(site2 = str_detect(site2, "consensus") * 2) %>%
-  mutate(site3 = str_detect(site3, "consensus") * 3) %>%
-  mutate(site4 = str_detect(site4, "consensus") * 4) %>%
-  mutate(site5 = str_detect(site5, "consensus") * 5) %>%
-  mutate(site6 = str_detect(site6, "consensus") * 6) %>%
+  filter(site_combo != 'mixed' & total_sites == 1) %>%
+  mutate(site1 = str_detect(site1, 
+                            paste(c("consensus", 'weak'), 
+                                  collapse = '|')) * -127) %>%
+  mutate(site2 = str_detect(site2, 
+                            paste(c("consensus", 'weak'), 
+                                  collapse = '|')) * -102) %>%
+  mutate(site3 = str_detect(site3, 
+                            paste(c("consensus", 'weak'), 
+                                  collapse = '|')) * -77) %>%
+  mutate(site4 = str_detect(site4, 
+                            paste(c("consensus", 'weak'), 
+                                  collapse = '|')) * -52) %>%
+  mutate(site5 = str_detect(site5, 
+                            paste(c("consensus", 'weak'), 
+                                  collapse = '|')) * -27) %>%
+  mutate(site6 = str_detect(site6, 
+                            paste(c("consensus", 'weak'), 
+                                  collapse = '|')) * -2) %>%
   mutate(site = site1 + site2 + site3 + site4 + site5 + site6)
+
+p_s5_single_site_exp <- s5_single_site_exp %>%
+  filter(conc == 4, consensus == 1) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(site, ave_ratio_norm)) +
+  geom_point(aes(color = background), shape = 21) +
+  geom_line(aes(color = background)) +
+  geom_hline(yintercept = 1, linetype = 2, alpha = 0.5) +
+  scale_color_manual(name = 'background', values = cbPalette3) +
+  ylab('Average normalized\nexpression (a.u.)') +
+  xlab('Distance along background (bp)')
+
+save_plot('plots/p_s5_single_site_exp.pdf', p_s5_single_site_exp,
+          scale = 1.3, base_height = 2, base_width = 4)
+ 
 
 
 #BC analysis--------------------------------------------------------------------
