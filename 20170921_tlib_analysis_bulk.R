@@ -22,6 +22,9 @@ cbPalette3 <- c('grey20', 'springgreen3', 'deepskyblue3')
 
 forskolin2 <- c('white', 'aquamarine3')
 
+cbpalette5 <- c('#440154FF', '#39568CFF', '#238A8DFF', '#29AF7FFF', 
+                '#73D055FF')
+
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
 #R0A_BC and R0B_BC: RNA at 0 µM Forsk replicate A and B
@@ -738,9 +741,6 @@ s3_untidy_bin20bp <- s3_untidy %>%
                    labels = c('0-20', '20-40', '40-60', '60-80',
                               '80-100', '100-120', '120-140')))
 
-spacing_palette <- c('#440154FF', '#39568CFF', '#238A8DFF', '#29AF7FFF', 
-                     '#73D055FF')
-
 p_subpool3_dist_4_bin20bp_back <- s3_untidy_bin20bp %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
@@ -751,7 +751,7 @@ p_subpool3_dist_4_bin20bp_back <- s3_untidy_bin20bp %>%
               position=position_jitter(width=0.3, height=0), alpha = 0.75) +
   geom_boxplot(outlier.shape=NA, size = 0.5, position = position_dodge(1),
                show.legend = FALSE, alpha = 0) +
-  scale_color_manual(values = spacing_palette, name = 'spacing (bp)') +
+  scale_color_manual(values = cbpalette5, name = 'spacing (bp)') +
   theme(legend.position = 'top', axis.ticks.x = element_blank(), 
         strip.background = element_rect(colour="black", fill="white")) + 
   scale_y_log10(limits = c(1,50)) +
@@ -946,7 +946,288 @@ p_s5_single_site_exp <- s5_single_site_exp %>%
 
 save_plot('plots/p_s5_single_site_exp.pdf', p_s5_single_site_exp,
           scale = 1.3, base_height = 2, base_width = 4)
- 
+
+
+#Induction analysis-------------------------------------------------------------
+
+s5_typecount_siteloc <- function(df) {
+  csite1 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site1, site1 == 'consensus') %>%
+    filter(site1 == 'consensus') %>%
+    mutate(csite = '-127') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, csite, induction) %>%
+    ungroup()
+  csite2 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site2, site2 == 'consensus') %>%
+    filter(site2 == 'consensus') %>%
+    mutate(csite = '-102') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, csite, induction) %>%
+    ungroup()
+  csite3 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site3, site3 == 'consensus') %>%
+    filter(site3 == 'consensus') %>%
+    mutate(csite = '-77') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, csite, induction) %>%
+    ungroup()
+  csite4 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site4, site4 == 'consensus') %>%
+    filter(site4 == 'consensus') %>%
+    mutate(csite = '-52') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, csite, induction) %>%
+    ungroup()
+  csite5 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site5, site5 == 'consensus') %>%
+    filter(site5 == 'consensus') %>%
+    mutate(csite = '-27') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, csite, induction) %>%
+    ungroup()
+  csite6 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site6, site6 == 'consensus') %>%
+    filter(site6 == 'consensus') %>%
+    mutate(csite = '-2') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, csite, induction) %>%
+    ungroup()
+  nocsites <- df %>%
+    filter(consensus == 0) %>%
+    mutate(csite = 'none') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, csite, induction)
+  csites <- rbind(csite1, csite2, csite3, csite4, csite5, csite6, nocsites)
+  wsite1 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site1, site1 == 'weak') %>%
+    filter(site1 == 'weak') %>%
+    mutate(wsite = -127) %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, wsite, induction) %>%
+    ungroup()
+  wsite2 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site2, site2 == 'weak') %>%
+    filter(site2 == 'weak') %>%
+    mutate(wsite = -102) %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, wsite, induction) %>%
+    ungroup()
+  wsite3 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site3, site3 == 'weak') %>%
+    filter(site3 == 'weak') %>%
+    mutate(wsite = -77) %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, wsite, induction) %>%
+    ungroup()
+  wsite4 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site4, site4 == 'weak') %>%
+    filter(site4 == 'weak') %>%
+    mutate(wsite = -52) %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, wsite, induction) %>%
+    ungroup()
+  wsite5 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site5, site5 == 'weak') %>%
+    filter(site5 == 'weak') %>%
+    mutate(wsite = -27) %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, wsite, induction) %>%
+    ungroup()
+  wsite6 <- df %>%
+    group_by(most_common, background, consensus, weak, 
+             site1, site2, site3, site4, site5, site6, induction) %>%
+    count(site6, site6 == 'weak') %>%
+    filter(site6 == 'weak') %>%
+    mutate(wsite = -2) %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, wsite, induction) %>%
+    ungroup()
+  nowsites <- df %>%
+    filter(weak == 0) %>%
+    mutate(wsite = 'none') %>%
+    select(most_common, background, weak, consensus, site1, site2, site3, site4, 
+           site5, site6, wsite, induction)
+  wsites <- rbind(wsite1, wsite2, wsite3, wsite4, wsite5, wsite6, nowsites)
+  c_w_sites <- inner_join(csites, wsites,
+                          by = c('most_common', 'background', 'weak', 
+                                 'consensus', 'site1', 'site2', 'site3', 
+                                 'site4', 'site5', 'site6', 'induction'))
+  return(c_w_sites)
+}
+
+s5_cons_weak_csite_wsite_med_ind <- s5_typecount_siteloc(s5_tidy) %>%
+  group_by(background, weak, consensus, csite, wsite) %>%
+  summarize(med_induction = median(induction))
+
+p_s5_cons_weak_csite_wsite_med_ind_vchr9 <- s5_cons_weak_csite_wsite_med_ind %>%
+  filter(background == 'v chr9') %>%
+  ungroup() %>%
+  mutate(csite = factor(csite, levels = c('none', '-127', '-102', '-77', '-52',
+                                          '-27', '-2'))) %>%
+  mutate(wsite = factor(wsite, levels = c('none', '-127', '-102', '-77', '-52',
+                                          '-27', '-2'))) %>%
+  mutate(weak = factor(weak, levels = c(6, 5, 4, 3, 2, 1, 0))) %>%
+  ggplot(aes(csite, wsite)) +
+  geom_tile(aes(fill = log10(med_induction))) +
+  facet_grid(weak ~ consensus) +
+  scale_fill_viridis(name = 'log10(med(induction))', limits = c(-0.05, 1.5)) +
+  panel_border(colour = 'black') +
+  theme(panel.background = element_rect(fill = "white"),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"),
+        panel.spacing = unit(0.10, "lines"))
+
+save_plot('plots/p_s5_cons_weak_csite_wsite_med_ind_vchr9.pdf', 
+          p_s5_cons_weak_csite_wsite_med_ind_vchr9, scale = 1.3,
+          base_width = 5, base_height = 3)
+
+p_s5_cons_weak_csite_wsite_med_ind_spGl4 <- s5_cons_weak_csite_wsite_med_ind %>%
+  filter(background == 's pGl4') %>%
+  ungroup() %>%
+  mutate(csite = factor(csite, levels = c('none', '-127', '-102', '-77', '-52',
+                                          '-27', '-2'))) %>%
+  mutate(wsite = factor(wsite, levels = c('none', '-127', '-102', '-77', '-52',
+                                          '-27', '-2'))) %>%
+  mutate(weak = factor(weak, levels = c(6, 5, 4, 3, 2, 1, 0))) %>%
+  ggplot(aes(csite, wsite)) +
+  geom_tile(aes(fill = log10(med_induction))) +
+  facet_grid(weak ~ consensus) +
+  scale_fill_viridis(name = 'log10(med(induction))', limits = c(-0.05, 1.5)) +
+  panel_border(colour = 'black') +
+  theme(panel.background = element_rect(fill = "white"),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"),
+        panel.spacing = unit(0.10, "lines"))
+
+save_plot('plots/p_s5_cons_weak_csite_wsite_med_ind_spGl4.pdf', 
+          p_s5_cons_weak_csite_wsite_med_ind_spGl4, scale = 1.3,
+          base_width = 5, base_height = 3)
+
+p_s5_cons_weak_csite_wsite_med_ind_vchr5 <- s5_cons_weak_csite_wsite_med_ind %>%
+  filter(background == 'v chr5') %>%
+  ungroup() %>%
+  mutate(csite = factor(csite, levels = c('none', '-127', '-102', '-77', '-52',
+                                          '-27', '-2'))) %>%
+  mutate(wsite = factor(wsite, levels = c('none', '-127', '-102', '-77', '-52',
+                                          '-27', '-2'))) %>%
+  mutate(weak = factor(weak, levels = c(6, 5, 4, 3, 2, 1, 0))) %>%
+  ggplot(aes(csite, wsite)) +
+  geom_tile(aes(fill = log10(med_induction))) +
+  facet_grid(weak ~ consensus) +
+  scale_fill_viridis(name = 'log10(med(induction))', limits = c(-0.05, 1.5)) +
+  panel_border(colour = 'black') +
+  theme(panel.background = element_rect(fill = "white"),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"),
+        panel.spacing = unit(0.10, "lines"))
+
+save_plot('plots/p_s5_cons_weak_csite_wsite_med_ind_vchr5.pdf', 
+          p_s5_cons_weak_csite_wsite_med_ind_vchr5, scale = 1.3,
+          base_width = 5, base_height = 3)
+
+
+ind_top50 <- function(df) {
+  vchr9 <- df %>%
+    filter(background == 'v chr9') %>%
+    arrange(desc(induction)) %>%
+    slice(1:50)
+  spgl4 <- df %>%
+    filter(background == 's pGl4') %>%
+    arrange(desc(induction)) %>%
+    slice(1:50)
+  vchr5 <- df %>%
+    filter(background == 'v chr5') %>%
+    arrange(desc(induction)) %>%
+    slice(1:50)
+  back_bind <- rbind(vchr9, spgl4, vchr5)
+  site1 <- back_bind %>%
+    group_by(background) %>%
+    count(site1, site1 == 'consensus') %>%
+    rename(counts = n) %>%
+    rename(type = site1) %>%
+    select(-3) %>%
+    mutate(site = 1)
+  site2 <- back_bind %>%
+    group_by(background) %>%
+    count(site2, site2 == 'consensus') %>%
+    rename(counts = n) %>%
+    rename(type = site2) %>%
+    select(-3) %>%
+    mutate(site = 2)
+  site3 <- back_bind %>%
+    group_by(background) %>%
+    count(site3, site3 == 'consensus') %>%
+    rename(counts = n) %>%
+    rename(type = site3) %>%
+    select(-3) %>%
+    mutate(site = 3)
+  site4 <- back_bind %>%
+    group_by(background) %>%
+    count(site4, site4 == 'consensus') %>%
+    rename(counts = n) %>%
+    rename(type = site4) %>%
+    select(-3) %>%
+    mutate(site = 4)
+  site5 <- back_bind %>%
+    group_by(background) %>%
+    count(site5, site5 == 'consensus') %>%
+    rename(counts = n) %>%
+    rename(type = site5) %>%
+    select(-3) %>%
+    mutate(site = 5)
+  site6 <- back_bind %>%
+    group_by(background) %>%
+    count(site6, site6 == 'consensus') %>%
+    rename(counts = n) %>%
+    rename(type = site6) %>%
+    select(-3) %>%
+    mutate(site = 6)
+  site_join <- bind_rows(site1, site2, site3, site4, site5, site6) %>%
+    ungroup()
+  return(site_join)
+}
+  
+s5_ind50_site_count <- ind_top50(s5_tidy) %>%
+  mutate(type = factor(type, levels = c('nosite', 'weak', 'consensus'))) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5')))
+  
+p_s5_ind50_site_count <- ggplot(s5_ind50_site_count,
+                                aes(as.factor(site), counts, fill = type)) +
+  facet_grid(~ background) +
+  geom_bar(stat = 'identity', position = 'fill') +
+  scale_fill_viridis(discrete = TRUE) + 
+  xlab('Site position') + 
+  panel_border()
 
 
 #BC analysis--------------------------------------------------------------------
@@ -2054,16 +2335,13 @@ m_m_model <- function(df) {
   return(m_m_nls)
 }
 
-#Trying to avoid the single gradient error message with nlslm........
-
-library(minpack.lm)
-
-m_m_model_nlslm <- function(df) {
-  m_m_nlslm <- nlsLM(
-    ave_ratio_norm ~ (max_ave_ratio_norm * conc)/(conc_half_max + conc),
-    data = df, 
-    start = list(conc_half_max = (2^-3), max_ave_ratio_norm = 2))
-  return(m_m_nlslm)
+pred_resid <- function(df1, x) {
+  df2 <- df1 %>%
+    add_predictions(x)
+  df3 <- df2 %>%
+    add_residuals(x)
+  return(df3)
+  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
 }
 
 
@@ -2090,18 +2368,8 @@ summary(m_m_fit)
 m_m_fit_nlslm <- m_m_model_nlslm(trans_back_0_norm_conc_sample1)
 summary(m_m_fit_nlslm)
 
-pred_resid <- function(df1, x) {
-  df2 <- df1 %>%
-    add_predictions(x)
-  df3 <- df2 %>%
-    add_residuals(x)
-  return(df3)
-  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
-}
-
-m_m_p_r <- pred_resid(trans_back_0_norm_conc_sample1, m_m_fit)
-
-ggplot(m_m_p_r, aes(x = conc)) +
+m_m_p_r <- pred_resid(trans_back_0_norm_conc_sample1, m_m_fit) %>%
+  ggplot(aes(x = conc)) +
   geom_point(aes(y = ave_ratio_norm), color = 'black') +
   geom_line(aes(y = ave_ratio_norm), color = 'black') +
   geom_point(aes(y = pred), color = 'red') +
@@ -2111,6 +2379,18 @@ ggplot(m_m_p_r, aes(x = conc)) +
 
 
 #Fitting nested data
+
+#Trying to avoid the single gradient error message with nlslm........
+
+library(minpack.lm)
+
+m_m_model_nlslm <- function(df) {
+  m_m_nlslm <- nlsLM(
+    ave_ratio_norm ~ (max_ave_ratio_norm * conc)/(conc_half_max + conc),
+    data = df, 
+    start = list(conc_half_max = (2^-3), max_ave_ratio_norm = 2))
+  return(m_m_nlslm)
+}
 
 m_m_nest_coef <- function(df1) {
   add_coef_unnest <- df1 %>%
@@ -2167,25 +2447,6 @@ m_m_nest_fit_nlslm <- trans_back_0_norm_conc_nest %>%
 
 m_m_coef_nlslm <- m_m_nest_coef(m_m_nest_fit_nlslm)
 
-m_m_p_r <- m_m_nest_pred_resid(m_m_nest_fit_nlslm)
-
-test <- m_m_p_r %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest() %>%
-  sample_n(50) %>%
-  unnest()
-
-ggplot(test, aes(x = conc)) +
-  facet_wrap(~ name) +
-  panel_border() +
-  geom_point(aes(y = ave_ratio_norm), color = 'black') +
-  geom_line(aes(y = ave_ratio_norm), color = 'black') +
-  geom_point(aes(y = pred), color = 'red') +
-  geom_line(aes(y = pred), color = 'red', linetype = 2) +
-  xlab('Forskolin µM') +
-  scale_y_continuous() +
-  ylab('Average background-normalized\nsum RNA/DNA')
-
 EC50 <- m_m_coef_nlslm %>%
   filter(term == 'conc_half_max') %>%
   select(-term) %>%
@@ -2193,228 +2454,103 @@ EC50 <- m_m_coef_nlslm %>%
   mutate(rel_std_error = std.error/EC50) %>%
   filter(rel_std_error <= 0.25)
 
-s5_sep <- function(df1) {
-  df1 %>%
-  select(-subpool) %>%
-  mutate(name = gsub('no_site', 'nosite', name)) %>%
-  separate(name, into = c("subpool", "site1", "site2", "site3", "site4", 
-                          "site5", "site6", "fluff"), sep = "_") %>%
-  select(-subpool, -fluff) %>%
-  mutate(consensus = str_detect(site1, "consensus") + 
-           str_detect(site2, "consensus") + 
-           str_detect(site3, "consensus") + 
-           str_detect(site4, "consensus") + 
-           str_detect(site5, "consensus") + 
-           str_detect(site6, "consensus")) %>%
-  mutate(weak = str_detect(site1, "weak") +
-           str_detect(site2, "weak") +
-           str_detect(site3, "weak") +
-           str_detect(site4, "weak") +
-           str_detect(site5, "weak") +
-           str_detect(site6, "weak")) %>%
-  mutate(nosite = str_detect(site1, "nosite") +
-           str_detect(site2, "nosite") +
-           str_detect(site3, "nosite") +
-           str_detect(site4, "nosite") +
-           str_detect(site5, "nosite") +
-           str_detect(site6, "nosite")) %>%
-  mutate(total_sites = consensus + weak) %>%
-  mutate(site_combo = 
-           ifelse(weak == 0 & consensus > 0, 
-                  'consensus', 'mixed')) %>%
-  mutate(site_type = 
-           ifelse(consensus == 0 & weak > 0, 
-                  'weak', site_combo))
-}
+m_m_p_r <- m_m_nest_pred_resid(m_m_nest_fit_nlslm)
 
-s5_EC50 <- s5_sep(EC50)
+EC50_p_r <- left_join(EC50, m_m_p_r, 
+                      by = c('subpool', 'name', 'most_common', 
+                             'background'))
 
-ggplot(filter(s5_EC50, weak == 0), aes(factor(consensus), EC50)) +
-  geom_boxplot(aes(color = background))
+EC50_p_r_5 <- EC50_p_r %>%
+  group_by(subpool, name, most_common, background, EC50, std.error, statistic,
+           p.value, rel_std_error) %>%
+  nest() %>%
+  sample_n(5) %>%
+  unnest()
+  
+cbpalette5 <- c('black', 'gray50', '#39568CFF', '#1F968BFF', 
+                '#73D055FF')
 
-s5_hill_frac <- EC50 %>%
-  left_join(trans_back_0_norm_conc,
-            by = c('name', 'subpool', 'most_common', 'background')) %>%
-  mutate(frac = conc/(conc + EC50)) %>%
-  filter(conc > 0) %>%
-  mutate(conc_over_EC50 = conc/EC50) %>%
-  s5_sep()
+p_m_m_nest_p_EC50 <- EC50_p_r_5 %>%
+  ggplot(aes(x = conc, color = name)) +
+  geom_point(aes(y = ave_ratio_norm)) +
+  geom_line(aes(y = ave_ratio_norm)) +
+  geom_point(aes(y = pred), shape = 21) +
+  geom_line(aes(y = pred), linetype = 2) +
+  theme(legend.position = 'right',
+        strip.background = element_rect(colour="black", fill="white")) +
+  scale_color_manual(values = cbpalette5, name = 'library member') +
+  xlab('Forskolin µM') +
+  ylab('Average normalized\nexpression (a.u.)')
 
-ggplot(filter(s5_hill_frac, weak == 0), aes(log2(conc), log2(frac/(1-frac)))) +
-  facet_grid(~ consensus) +
-  geom_line(aes(color = most_common), show.legend = FALSE) + 
-  background_grid(major = 'xy')
+save_plot('plots/p_m_m_nest_p_EC50.pdf', p_m_m_nest_p_EC50, scale = 1.3,
+          base_height = 2.25, base_width = 8.25)
+
+s5_EC50 <- left_join(EC50, s5_untidy,
+                     by = c('most_common', 'background')) %>%
+  select(-subpool)
+
+p_s5_num_cons_num_weak_allback_EC50 <- s5_EC50 %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  filter(consensus > 1 & weak == 0) %>%
+  ggplot(aes(as.factor(consensus), EC50)) +
+  facet_grid(~ background) +
+  geom_boxplot(outlier.size = 0.75, size = 0.3, outlier.alpha = 1) +
+  panel_border(colour = 'black') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  background_grid(major = 'y', minor = 'none') + 
+  ylab('EC50') +
+  xlab('Number of consensus sites')
+
+save_plot('plots/p_s5_num_cons_num_weak_allback_EC50.pdf', 
+          p_s5_num_cons_num_weak_allback_EC50, scale = 1.3,
+          base_width = 5, base_height = 2)
 
 
 #Hill plots---------------------------------------------------------------------
 
-#Sample data and plot to visualize trend
+#Make hill values such as fraction occupied (theta), log2(conc) and 
+#log2(theta/1-theta)
 
-trans_back_norm_conc_50 <- trans_back_norm_conc_log2 %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest() %>%
-  sample_n(50) %>%
-  unnest()
-
-ggplot(trans_back_norm_conc_50, aes(conc, ave_ratio_norm, color = name)) +
-  geom_point(show.legend = FALSE) +
-  geom_line(show.legend = FALSE) +
-  facet_wrap(~ subpool) +
-  scale_x_continuous(breaks = c(-7:2)) +
-  xlab('log2 forskolin µM') +
-  ylab('Average background-normalized\nsum RNA/DNA') +
-  panel_border() +
-  annotation_logticks(sides = 'b') +
-  background_grid(major = 'xy', minor = 'none')
-
-
-#Try fitting hill/log curves
-
-#Pull out 1 variant to test
-
-trans_back_norm_conc_sp5 <- trans_back_norm_conc_log2 %>%
-  filter(subpool == 'subpool5') %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest() %>%
-  sample_n(1)
-
-ggplot(unnest(trans_back_norm_conc_sp5), 
-       aes(conc, ave_ratio_norm, color = name)) +
-  geom_point(show.legend = FALSE) +
-  geom_line() +
-  scale_x_continuous(breaks = c(-7:2)) +
-  xlab('log2 forskolin µM') +
-  ylab('Average background-normalized\nsum RNA/DNA')
-
-#Log curve on log2 conc
-
-trans_back_norm_conc8_sp5 <- trans_back_norm_conc_log2 %>%
-  unnest() %>%
-  mutate(conc = log2(conc) + 8) %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest()
-
-log_curve_model <- function(df) {
-  n_init <- 1
-  conc_half_max_init <- -4
-  max_ave_ratio_norm_init <- 10
-  log_curve_nls <- nls(
-    ave_ratio_25_norm ~ max_ave_ratio_norm/(1 + exp(-n * (conc - conc_half_max))),
-    data = df, start = c(n = n_init, conc_half_max = conc_half_max_init, 
-                         max_ave_ratio_norm = max_ave_ratio_norm_init))
-  return(log_curve_nls)
-}
-
-pred_resid <- function(df1, x) {
-  df2 <- df1 %>%
-    add_predictions(x)
-  df3 <- df2 %>%
-    add_residuals(x)
-  return(df3)
-  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
-}
-
-log_curve_fit <- log_curve_model(bin_site_s5)
-summary(log_curve_fit)
-log_curve_p_r <- pred_resid(bin_site_s5, log_curve_fit)
-
-
-#Try making fraction occupied hill plots
-
-#Let's test this on subpool5 and facet by total # sites
-
-sp5_conc_exp <- function(df) {
-  df_0 <- df %>%
-    mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_0, 
-           ave_ratio_0_norm) %>%
-    mutate(conc = 2^-7) %>%
-    rename(ave_ratio_norm = ave_ratio_0_norm) %>%
-    rename(ave_barcode = ave_barcode_0)
-  df_2_5 <- df %>%
-    mutate(ave_barcode_2_5 = (barcodes_RNA_2_5A + barcodes_RNA_2_5B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_2_5, 
-           ave_ratio_2_5_norm) %>%
-    mutate(conc = 2^-5) %>%
-    rename(ave_ratio_norm = ave_ratio_2_5_norm) %>%
-    rename(ave_barcode = ave_barcode_2_5)
-  df_2_4 <- df %>%
-    mutate(ave_barcode_2_4 = (barcodes_RNA_2_4A + barcodes_RNA_2_4B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_2_4, 
-           ave_ratio_2_4_norm) %>%
-    mutate(conc = 2^-4) %>%
-    rename(ave_ratio_norm = ave_ratio_2_4_norm) %>%
-    rename(ave_barcode = ave_barcode_2_4)
-  df_2_3 <- df %>%
-    mutate(ave_barcode_2_3 = (barcodes_RNA_2_3A + barcodes_RNA_2_3B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_2_3, 
-           ave_ratio_2_3_norm) %>%
-    mutate(conc = 2^-3) %>%
-    rename(ave_ratio_norm = ave_ratio_2_3_norm) %>%
-    rename(ave_barcode = ave_barcode_2_3)
-  df_2_2 <- df %>%
-    mutate(ave_barcode_2_2 = (barcodes_RNA_2_2A + barcodes_RNA_2_2B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_2_2, 
-           ave_ratio_2_2_norm) %>%
-    mutate(conc = 2^-2) %>%
-    rename(ave_ratio_norm = ave_ratio_2_2_norm) %>%
-    rename(ave_barcode = ave_barcode_2_2)
-  df_2_1 <- df %>%
-    mutate(ave_barcode_2_1 = (barcodes_RNA_2_1A + barcodes_RNA_2_1B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_2_1, 
-           ave_ratio_2_1_norm) %>%
-    mutate(conc = 2^-1) %>%
-    rename(ave_ratio_norm = ave_ratio_2_1_norm) %>%
-    rename(ave_barcode = ave_barcode_2_1)
-  df_20 <- df %>%
-    mutate(ave_barcode_20 = (barcodes_RNA_20A + barcodes_RNA_20B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_20, 
-           ave_ratio_20_norm) %>%
-    mutate(conc = 2^0) %>%
-    rename(ave_ratio_norm = ave_ratio_20_norm) %>%
-    rename(ave_barcode = ave_barcode_20)
-  df_22 <- df %>%
-    mutate(ave_barcode_22 = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
-    select(consensus, weak, nosite, most_common, background, ave_barcode_22, 
-           ave_ratio_22_norm) %>%
-    mutate(conc = 2^2) %>%
-    rename(ave_ratio_norm = ave_ratio_22_norm) %>%
-    rename(ave_barcode = ave_barcode_22)
-  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, df_22)
-  return(df_0_22)
-}
-
-sp5_back_norm_conc_log2 <- sp5_conc_exp(subpool5) %>%
+s5_hill_frac <- s5_EC50  %>%
+  mutate(frac = conc/(conc + EC50)) %>%
+  filter(conc > 0) %>%
   mutate(conc = log2(conc)) %>%
-  filter(weak == 0)
+  mutate(HillY = log2(frac/(1-frac)))
 
-hill_fraction_sp5 <- function(df) {
-  exp_2_2 <- df %>%
-    filter(conc == 2) %>%
-    select(most_common, consensus, background, ave_ratio_norm) %>%
-    rename(ave_ratio_norm_2_2 = ave_ratio_norm) %>%
-    mutate(ave_ratio_norm_2_2 = 1.1 * ave_ratio_norm_2_2) %>%
-    filter(ave_ratio_norm_2_2 > 5)
-  fraction <- right_join(df, exp_2_2, by = c('consensus', 'most_common','background')) %>%
-    filter(conc != -7) %>%
-    mutate(frac_active = log2((ave_ratio_norm/ave_ratio_norm_2_2)/(1 - ave_ratio_norm/ave_ratio_norm_2_2)))
-  return(fraction)
+p_s5_hilly_conc <- ggplot(s5_hill_frac, aes(conc, HillY)) +
+  geom_line(aes(color = most_common), show.legend = FALSE, alpha = 0.2) + 
+  ylab('log2(frac/1-frac)') +
+  xlab('log2(forskolin (µM))') +
+  geom_abline(slope = 1)
+
+save_plot('plots/p_s5_hilly_conc.pdf', p_s5_hilly_conc, scale = 1.3,
+          base_height = 2.25, base_width = 2.25)
+
+hill_slope_lm <- function(df) {
+  model <- lm(HillY ~ conc, data = df)
+  return(model)
 }
 
-trans_back_norm_conc_hillfrac <- hill_fraction_sp5(sp5_back_norm_conc_log2)
+hill_slope_nest_coef <- function(df1) {
+  add_coef_unnest <- df1 %>%
+    mutate(results = map(model, tidy)) %>%
+    select(-model, -data) %>%
+    unnest()
+}
 
-ggplot(trans_back_norm_conc_hillfrac, 
-       aes(conc, frac_active, color = most_common)) +
-  geom_point(show.legend = FALSE) +
-  geom_line(show.legend = FALSE) +
-  facet_wrap(~ consensus) +
-  scale_x_continuous(limits = c(-5, 0)) +
-  geom_abline(slope = 1.5) +
-  xlab('log2 forskolin µM') +
-  ylab('log2 (y/1-y)') + 
-  panel_border() +
-  annotation_logticks(sides = 'bl') +
-  background_grid(major = 'xy', minor = 'none')
+hill_slope_lm_fit <- s5_hill_frac %>%
+  group_by(name, most_common, background, EC50, std.error, statistic, p.value,
+           rel_std_error, site1, site2, site3, site4, site5, site6, 
+           consensus, weak, nosite, total_sites, site_combo) %>%
+  nest() %>%
+  mutate(model = map(data, hill_slope_lm))
+
+hill_slope_lm_coef <- hill_slope_nest_coef(hill_slope_lm_fit) %>%
+  filter(term == 'conc') %>%
+  select(-term) %>%
+  rename(Hill_slope = estimate)
   
 
 #Combine and compare expression across a different set of concentrations--------
