@@ -2469,20 +2469,77 @@ m_m_EC50_n_p_r <- left_join(hill_EC50, m_m_p_r,
                             by = c('subpool', 'name', 'most_common', 
                                    'background', 'conc'))
 
-p_m_m_nest_p <- m_m_EC50_n_p_r %>%
-  ggplot(aes(ave_ratio_norm_0, pred)) +
-  geom_point(alpha = 0.2) +
-  annotate("text", x = 25, y = 75, 
-           label = paste('r =', round(cor(m_m_EC50_n_p_r$ave_ratio_norm_0, 
-                                          m_m_EC50_n_p_r$pred,
-                                          use = "pairwise.complete.obs", 
-                                          method = "pearson"), 4)))
-
-p_m_m_nest_r <- m_m_EC50_n_p_r %>%
+p_resid_dens <- m_m_EC50_n_p_r %>%
   ggplot(aes(resid)) +
-  geom_histogram(binwidth = 1) +
-  xlab('Average normalized\n expression (a.u.)')
-  
+  geom_density(kernel = 'gaussian') +
+  xlab('expression residual')
+
+save_plot('plots/p_resid_dens.pdf', p_resid_dens, scale = 1.3, base_width = 2.5,
+          base_height = 2)
+
+qqnorm(m_m_EC50_n_p_r$resid)
+
+p_resid_distr <- ggplot(m_m_EC50_n_p_r, aes(ave_ratio_norm_0, resid)) +
+  geom_point(alpha = 0.1) +
+  xlab('Average normalized\nexpression (a.u.)\n-exp. at 0 µM')
+
+save_plot('plots/p_resid_distr.pdf', p_resid_distr, scale = 1.3, 
+          base_width = 3.5, base_height = 2)
+
+p_EC50_hist <- m_m_EC50_n_p_r %>%
+  ggplot(aes(EC50_rse)) +
+  geom_density(kernel = 'gaussian')
+
+save_plot('plots/p_EC50_hist.pdf', p_EC50_hist, scale = 1.3, base_height = 2,
+          base_width = 2.5)
+
+p_n_hist <- m_m_EC50_n_p_r %>%
+  ggplot(aes(n_rse)) +
+  geom_density(kernel = 'gaussian')
+
+save_plot('plots/p_n_hist.pdf', p_n_hist, scale = 1.3, base_height = 2,
+          base_width = 2.5)
+
+p_binding_fit_high_rse <- m_m_EC50_n_p_r %>%
+  filter(EC50_rse > 0.19 & n_rse > 0.19) %>%
+  ggplot(aes(x = conc, color = name)) +
+  geom_point(aes(y = ave_ratio_norm_0)) +
+  geom_line(aes(y = ave_ratio_norm_0)) +
+  geom_point(aes(y = pred), shape = 21) +
+  geom_line(aes(y = pred), linetype = 2) +
+  scale_color_viridis(discrete = TRUE)
+
+save_plot('plots/p_binding_fit_high_rse.pdf', p_binding_fit_high_rse, 
+          scale = 1.3, base_height = 3, base_width = 8.5)
+
+p_binding_fit_low_rse <- m_m_EC50_n_p_r %>%
+  filter(EC50_rse < 0.01 & n_rse < 0.01) %>%
+  ggplot(aes(x = conc, color = name)) +
+  geom_point(aes(y = ave_ratio_norm_0)) +
+  geom_line(aes(y = ave_ratio_norm_0)) +
+  geom_point(aes(y = pred), shape = 21) +
+  geom_line(aes(y = pred), linetype = 2) +
+  scale_color_viridis(discrete = TRUE)
+
+save_plot('plots/p_binding_fit_low_rse.pdf', p_binding_fit_low_rse, 
+          scale = 1.3, base_height = 3, base_width = 8.5)
+
+EC50_p_r_sample <- m_m_EC50_n_p_r %>%
+  group_by(subpool, name, most_common, background, EC50, EC50_rse, n, n_rse) %>%
+  nest() %>%
+  sample_n(7) %>%
+  unnest()
+
+p_binding_fit_sample <- EC50_p_r_sample %>%
+  ggplot(aes(x = conc, color = name)) +
+  geom_point(aes(y = ave_ratio_norm_0)) +
+  geom_line(aes(y = ave_ratio_norm_0)) +
+  geom_point(aes(y = pred), shape = 21) +
+  geom_line(aes(y = pred), linetype = 2) +
+  scale_color_viridis(discrete = TRUE)
+
+save_plot('plots/p_binding_fit_sample.pdf', p_binding_fit_sample, scale = 1.3,
+          base_height = 3, base_width = 8.5)
 
 
 #plot coefficients (n and EC50) and their relationship to architectures
