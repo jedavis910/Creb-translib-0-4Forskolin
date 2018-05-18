@@ -1093,7 +1093,7 @@ p_s5_cons_weak_csite_wsite_med_ind_vchr9 <- s5_cons_weak_csite_wsite_med_ind %>%
   ggplot(aes(csite, wsite)) +
   geom_tile(aes(fill = log10(med_induction))) +
   facet_grid(weak ~ consensus) +
-  scale_fill_viridis(name = 'log10(med(induction))', limits = c(-0.05, 1.5)) +
+  scale_fill_viridis(name = 'log10(med(induction))') +
   panel_border(colour = 'black') +
   theme(panel.background = element_rect(fill = "white"),
         axis.ticks = element_blank(),
@@ -2380,15 +2380,13 @@ m_m_p_r <- pred_resid(trans_back_0_norm_conc_sample1, m_m_fit) %>%
 
 #Fitting nested data
 
-#Trying to avoid the single gradient error message with nlslm........
-
 library(minpack.lm)
 
 m_m_model_nlslm <- function(df) {
   m_m_nlslm <- nlsLM(
-    ave_ratio_norm ~ (max_ave_ratio_norm * conc)/(conc_half_max + conc),
+    ave_ratio_norm ~ (max_ave_ratio_norm * conc^n)/(conc_half_max^n + conc^n),
     data = df, 
-    start = list(conc_half_max = (2^-3), max_ave_ratio_norm = 2))
+    start = list(conc_half_max = (2^-3), max_ave_ratio_norm = 2, n = 1))
   return(m_m_nlslm)
 }
 
@@ -2416,9 +2414,11 @@ m_m_nest_pred_resid <- function(df1) {
                                 'conc', 'ave_ratio_norm'))
   data_pred_resid <- left_join(data_pred, resid,
                                by = c('subpool', 'name', 'most_common', 
-                                      'background', 'conc', 'ave_ratio_norm'))
+                                      'background', 'conc', 'ave_ratio_norm')) %>%
+    ungroup()
   return(data_pred_resid)
 }
+
 
 #Select higher expressing variants to fit curves to, had hard time fitting
 #nested data to 2500-4172 variants, but these drove lower than 0.75 expression 
@@ -2427,69 +2427,78 @@ m_m_nest_pred_resid <- function(df1) {
 
 trans_back_0_norm_conc_nest <- trans_back_0_norm_conc %>%
   select(-ave_barcode) %>%
-  filter(!grepl('^subpool5_no_site_no_site_no_site_no_site_no_site_no_site', name)) %>%
+  filter(!grepl('^subpool5_no_site_no_site_no_site_no_site_no_site_no_site', 
+                name)) %>%
   filter(subpool == 'subpool5') %>%
   arrange(desc(ave_ratio_norm)) %>%
   group_by(subpool, name, most_common, background) %>%
   nest() %>%
   slice(1:1500)
 
-ggplot(unnest(trans_back_0_norm_conc_nest), 
-       aes(conc, ave_ratio_norm, color = name)) +
-  geom_point(show.legend = FALSE) +
-  geom_line(show.legend = FALSE) +
-  xlab('Forskolin µM') +
-  scale_y_continuous() +
-  ylab('Average background-normalized\nsum RNA/DNA')
-
 m_m_nest_fit_nlslm <- trans_back_0_norm_conc_nest %>%
   mutate(m_m_fit = map(trans_back_0_norm_conc_nest$data, m_m_model_nlslm))
 
 m_m_coef_nlslm <- m_m_nest_coef(m_m_nest_fit_nlslm)
 
-EC50 <- m_m_coef_nlslm %>%
+#Test fits
+
+hillcoef <- m_m_coef_nlslm %>%
+  filter(term == 'n') %>%
+  mutate(n_rse = std.error/estimate) %>%
+  filter(n_rse <= 0.25) %>%
+  rename(n = estimate) %>%
+  select(-term, -std.error, -statistic, -p.value) %>%
+  left_join(s5_untidy,
+            by = c('most_common', 'background')) %>%
+  select(-subpool) %>%
+  ungroup()
+
+hill_EC50 <- m_m_coef_nlslm %>%
   filter(term == 'conc_half_max') %>%
-  select(-term) %>%
+  mutate(EC50_rse = std.error/estimate) %>%
+  filter(EC50_rse <= 0.25) %>%
   rename(EC50 = estimate) %>%
-  mutate(rel_std_error = std.error/EC50) %>%
-  filter(rel_std_error <= 0.25)
+  select(-term, -std.error, -statistic, -p.value) %>%
+  inner_join(hillcoef, by = c('name', 'most_common', 'background')) %>%
+  ungroup()
 
-m_m_p_r <- m_m_nest_pred_resid(m_m_nest_fit_nlslm)
+m_m_p_r <- m_m_nest_pred_resid(m_m_nest_fit_nlslm) %>%
+  rename(ave_ratio_norm_0 = ave_ratio_norm)
 
-EC50_p_r <- left_join(EC50, m_m_p_r, 
-                      by = c('subpool', 'name', 'most_common', 
-                             'background'))
+m_m_EC50_n_p_r <- left_join(hill_EC50, m_m_p_r, 
+                            by = c('subpool', 'name', 'most_common', 
+                                   'background', 'conc'))
 
-EC50_p_r_5 <- EC50_p_r %>%
-  group_by(subpool, name, most_common, background, EC50, std.error, statistic,
-           p.value, rel_std_error) %>%
-  nest() %>%
-  sample_n(5) %>%
-  unnest()
+p_m_m_nest_p <- m_m_EC50_n_p_r %>%
+  ggplot(aes(ave_ratio_norm_0, pred)) +
+  geom_point(alpha = 0.2) +
+  annotate("text", x = 25, y = 75, 
+           label = paste('r =', round(cor(m_m_EC50_n_p_r$ave_ratio_norm_0, 
+                                          m_m_EC50_n_p_r$pred,
+                                          use = "pairwise.complete.obs", 
+                                          method = "pearson"), 4)))
+
+p_m_m_nest_r <- m_m_EC50_n_p_r %>%
+  ggplot(aes(resid)) +
+  geom_histogram(binwidth = 1) +
+  xlab('Average normalized\n expression (a.u.)')
   
-cbpalette5 <- c('black', 'gray50', '#39568CFF', '#1F968BFF', 
-                '#73D055FF')
 
-p_m_m_nest_p_EC50 <- EC50_p_r_5 %>%
-  ggplot(aes(x = conc, color = name)) +
-  geom_point(aes(y = ave_ratio_norm)) +
-  geom_line(aes(y = ave_ratio_norm)) +
-  geom_point(aes(y = pred), shape = 21) +
-  geom_line(aes(y = pred), linetype = 2) +
-  theme(legend.position = 'right',
-        strip.background = element_rect(colour="black", fill="white")) +
-  scale_color_manual(values = cbpalette5, name = 'library member') +
-  xlab('Forskolin µM') +
-  ylab('Average normalized\nexpression (a.u.)')
 
-save_plot('plots/p_m_m_nest_p_EC50.pdf', p_m_m_nest_p_EC50, scale = 1.3,
-          base_height = 2.25, base_width = 8.25)
+#plot coefficients (n and EC50) and their relationship to architectures
 
-s5_EC50 <- left_join(EC50, s5_untidy,
-                     by = c('most_common', 'background')) %>%
-  select(-subpool)
+p_n_consensus <- hill_EC50 %>%
+  filter(consensus > 1) %>%
+  ggplot(aes(as.factor(consensus), n)) +
+  geom_boxplot(outlier.size = 0.5, size = 0.3, outlier.alpha = 0.5) +
+  xlab('consensus sites') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
 
-p_s5_num_cons_num_weak_allback_EC50 <- s5_EC50 %>%
+save_plot('plots/p_n_consensus.pdf', p_n_consensus, scale = 1.3, 
+          base_width = 2.25, base_height = 2)
+
+p_s5_num_cons_num_weak_allback_EC50 <- hill_EC50 %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   filter(consensus > 1 & weak == 0) %>%
@@ -2506,51 +2515,6 @@ p_s5_num_cons_num_weak_allback_EC50 <- s5_EC50 %>%
 save_plot('plots/p_s5_num_cons_num_weak_allback_EC50.pdf', 
           p_s5_num_cons_num_weak_allback_EC50, scale = 1.3,
           base_width = 5, base_height = 2)
-
-
-#Hill plots---------------------------------------------------------------------
-
-#Make hill values such as fraction occupied (theta), log2(conc) and 
-#log2(theta/1-theta)
-
-s5_hill_frac <- s5_EC50  %>%
-  mutate(frac = conc/(conc + EC50)) %>%
-  filter(conc > 0) %>%
-  mutate(conc = log2(conc)) %>%
-  mutate(HillY = log2(frac/(1-frac)))
-
-p_s5_hilly_conc <- ggplot(s5_hill_frac, aes(conc, HillY)) +
-  geom_line(aes(color = most_common), show.legend = FALSE, alpha = 0.2) + 
-  ylab('log2(frac/1-frac)') +
-  xlab('log2(forskolin (µM))') +
-  geom_abline(slope = 1)
-
-save_plot('plots/p_s5_hilly_conc.pdf', p_s5_hilly_conc, scale = 1.3,
-          base_height = 2.25, base_width = 2.25)
-
-hill_slope_lm <- function(df) {
-  model <- lm(HillY ~ conc, data = df)
-  return(model)
-}
-
-hill_slope_nest_coef <- function(df1) {
-  add_coef_unnest <- df1 %>%
-    mutate(results = map(model, tidy)) %>%
-    select(-model, -data) %>%
-    unnest()
-}
-
-hill_slope_lm_fit <- s5_hill_frac %>%
-  group_by(name, most_common, background, EC50, std.error, statistic, p.value,
-           rel_std_error, site1, site2, site3, site4, site5, site6, 
-           consensus, weak, nosite, total_sites, site_combo) %>%
-  nest() %>%
-  mutate(model = map(data, hill_slope_lm))
-
-hill_slope_lm_coef <- hill_slope_nest_coef(hill_slope_lm_fit) %>%
-  filter(term == 'conc') %>%
-  select(-term) %>%
-  rename(Hill_slope = estimate)
   
 
 #Combine and compare expression across a different set of concentrations--------
