@@ -441,7 +441,112 @@ var_conc_exp <- function(df) {
   return(df_0_22)
 }
 
+var_conc_exp_rep <- function(df) {
+  df_0A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_0A, 
+           ratio_0A_norm) %>%
+    mutate(conc = 0) %>%
+    rename(ratio_norm = ratio_0A_norm) %>%
+    rename(barcodes = barcodes_RNA_0A)
+  df_0B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_0B, 
+           ratio_0B_norm) %>%
+    mutate(conc = 0) %>%
+    rename(ratio_norm = ratio_0B_norm) %>%
+    rename(barcodes = barcodes_RNA_0B)
+  df_2_5A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_5A, 
+           ratio_2_5A_norm) %>%
+    mutate(conc = 2^-5) %>%
+    rename(ratio_norm = ratio_2_5A_norm) %>%
+    rename(barcodes = barcodes_RNA_2_5A)
+  df_2_5B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_5B, 
+           ratio_2_5B_norm) %>%
+    mutate(conc = 2^-5) %>%
+    rename(ratio_norm = ratio_2_5B_norm) %>%
+    rename(barcodes = barcodes_RNA_2_5B)
+  df_2_4A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_4A, 
+           ratio_2_4A_norm) %>%
+    mutate(conc = 2^-4) %>%
+    rename(ratio_norm = ratio_2_4A_norm) %>%
+    rename(barcodes = barcodes_RNA_2_4A)
+  df_2_4B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_4B, 
+           ratio_2_4B_norm) %>%
+    mutate(conc = 2^-4) %>%
+    rename(ratio_norm = ratio_2_4B_norm) %>%
+    rename(barcodes = barcodes_RNA_2_4B)
+  df_2_3A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_3A, 
+           ratio_2_3A_norm) %>%
+    mutate(conc = 2^-3) %>%
+    rename(ratio_norm = ratio_2_3A_norm) %>%
+    rename(barcodes = barcodes_RNA_2_3A)
+  df_2_3B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_3B, 
+           ratio_2_3B_norm) %>%
+    mutate(conc = 2^-3) %>%
+    rename(ratio_norm = ratio_2_3B_norm) %>%
+    rename(barcodes = barcodes_RNA_2_3B)
+  df_2_2A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_2A, 
+           ratio_2_2A_norm) %>%
+    mutate(conc = 2^-2) %>%
+    rename(ratio_norm = ratio_2_2A_norm) %>%
+    rename(barcodes = barcodes_RNA_2_2A)
+  df_2_2B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_2B, 
+           ratio_2_2B_norm) %>%
+    mutate(conc = 2^-2) %>%
+    rename(ratio_norm = ratio_2_2B_norm) %>%
+    rename(barcodes = barcodes_RNA_2_2B)
+  df_2_1A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_1A, 
+           ratio_2_1A_norm) %>%
+    mutate(conc = 2^-1) %>%
+    rename(ratio_norm = ratio_2_1A_norm) %>%
+    rename(barcodes = barcodes_RNA_2_1A)
+  df_2_1B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_2_1B, 
+           ratio_2_1B_norm) %>%
+    mutate(conc = 2^-1) %>%
+    rename(ratio_norm = ratio_2_1B_norm) %>%
+    rename(barcodes = barcodes_RNA_2_1B)
+  df_20A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_20A, 
+           ratio_20A_norm) %>%
+    mutate(conc = 2^0) %>%
+    rename(ratio_norm = ratio_20A_norm) %>%
+    rename(barcodes = barcodes_RNA_20A)
+  df_20B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_20B, 
+           ratio_20B_norm) %>%
+    mutate(conc = 2^0) %>%
+    rename(ratio_norm = ratio_20B_norm) %>%
+    rename(barcodes = barcodes_RNA_20B)
+  df_22A <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_22A, 
+           ratio_22A_norm) %>%
+    mutate(conc = 2^2) %>%
+    rename(ratio_norm = ratio_22A_norm) %>%
+    rename(barcodes = barcodes_RNA_22A)
+  df_22B <- df %>%
+    select(subpool, name, most_common, background, barcodes_RNA_22B, 
+           ratio_22B_norm) %>%
+    mutate(conc = 2^2) %>%
+    rename(ratio_norm = ratio_22B_norm) %>%
+    rename(barcodes = barcodes_RNA_22B)
+  df_0_22 <- rbind(df_0A, df_0B, df_2_5A, df_2_5B, df_2_4A, df_2_4B, df_2_3A,
+                   df_2_3B, df_2_2A, df_2_2B, df_2_1A, df_2_1B, df_20A, df_20B,
+                   df_22A, df_22B)
+  return(df_0_22)
+}
+
 trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
+
+trans_back_norm_conc_rep <- var_conc_exp_rep(trans_back_norm_rep_0_22)
 
 trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
 
@@ -525,6 +630,7 @@ subpool5 <- function(df) {
 
 s5_tidy <- subpool5(trans_back_norm_rep_0_22)
 s5_untidy <- subpool5(trans_back_norm_conc)
+s5_untidy_rep <- subpool5(trans_back_norm_conc_rep)
   
 #Do I still look at controls?
 controls <- 
@@ -1078,9 +1184,14 @@ s5_typecount_siteloc <- function(df) {
   return(c_w_sites)
 }
 
-s5_cons_weak_csite_wsite_med_ind <- s5_typecount_siteloc(s5_tidy) %>%
-  group_by(background, weak, consensus, csite, wsite) %>%
-  summarize(med_induction = median(induction))
+s5_cons_weak_csite_wsite_ind <- s5_typecount_siteloc(s5_tidy)
+
+test <- s5_cons_weak_csite_wsite_ind %>%
+  filter(background == 'v chr9') %>%
+  mutate(csite = factor(csite, levels = c('none', '-127', '-102', '-77', '-52',
+                                          '-27', '-2'))) %>%
+  ggplot(aes(csite, induction, color = as.factor(consensus))) +
+  geom_boxplot()
 
 p_s5_cons_weak_csite_wsite_med_ind_vchr9 <- s5_cons_weak_csite_wsite_med_ind %>%
   filter(background == 'v chr9') %>%
@@ -2435,6 +2546,16 @@ trans_back_0_norm_conc_nest <- trans_back_0_norm_conc %>%
   nest() %>%
   slice(1:1500)
 
+trans_back_0_norm_conc_nest_sp3 <- trans_back_0_norm_conc %>%
+  filter(subpool == 'subpool3') %>%
+  select(-ave_barcode) %>%
+  filter(!grepl('^subpool5_no_site_no_site_no_site_no_site_no_site_no_site', 
+                name)) %>%
+  arrange(desc(ave_ratio_norm)) %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest() %>%
+  slice(1:1500)
+
 m_m_nest_fit_nlslm <- trans_back_0_norm_conc_nest %>%
   mutate(m_m_fit = map(trans_back_0_norm_conc_nest$data, m_m_model_nlslm))
 
@@ -2477,8 +2598,6 @@ p_resid_dens <- m_m_EC50_n_p_r %>%
 save_plot('plots/p_resid_dens.pdf', p_resid_dens, scale = 1.3, base_width = 2.5,
           base_height = 2)
 
-qqnorm(m_m_EC50_n_p_r$resid)
-
 p_resid_distr <- ggplot(m_m_EC50_n_p_r, aes(ave_ratio_norm_0, resid)) +
   geom_point(alpha = 0.1) +
   xlab('Average normalized\nexpression (a.u.)\n-exp. at 0 µM')
@@ -2486,18 +2605,20 @@ p_resid_distr <- ggplot(m_m_EC50_n_p_r, aes(ave_ratio_norm_0, resid)) +
 save_plot('plots/p_resid_distr.pdf', p_resid_distr, scale = 1.3, 
           base_width = 3.5, base_height = 2)
 
-p_EC50_hist <- m_m_EC50_n_p_r %>%
+p_EC50_rse_hist <- m_m_EC50_n_p_r %>%
   ggplot(aes(EC50_rse)) +
-  geom_density(kernel = 'gaussian')
+  geom_density(kernel = 'gaussian') +
+  scale_x_continuous(breaks = c(0, 0.1, 0.2))
 
-save_plot('plots/p_EC50_hist.pdf', p_EC50_hist, scale = 1.3, base_height = 2,
+save_plot('plots/p_EC50_rse_hist.pdf', p_EC50_rse_hist, scale = 1.3, base_height = 2,
           base_width = 2.5)
 
-p_n_hist <- m_m_EC50_n_p_r %>%
+p_n_rse_hist <- m_m_EC50_n_p_r %>%
   ggplot(aes(n_rse)) +
-  geom_density(kernel = 'gaussian')
+  geom_density(kernel = 'gaussian') +
+  scale_x_continuous(breaks = c(0, 0.1, 0.2))
 
-save_plot('plots/p_n_hist.pdf', p_n_hist, scale = 1.3, base_height = 2,
+save_plot('plots/p_n_rse_hist.pdf', p_n_rse_hist, scale = 1.3, base_height = 2,
           base_width = 2.5)
 
 p_binding_fit_high_rse <- m_m_EC50_n_p_r %>%
@@ -2524,38 +2645,67 @@ p_binding_fit_low_rse <- m_m_EC50_n_p_r %>%
 save_plot('plots/p_binding_fit_low_rse.pdf', p_binding_fit_low_rse, 
           scale = 1.3, base_height = 3, base_width = 8.5)
 
-EC50_p_r_sample <- m_m_EC50_n_p_r %>%
-  group_by(subpool, name, most_common, background, EC50, EC50_rse, n, n_rse) %>%
-  nest() %>%
-  sample_n(7) %>%
-  unnest()
-
-p_binding_fit_sample <- EC50_p_r_sample %>%
-  ggplot(aes(x = conc, color = name)) +
-  geom_point(aes(y = ave_ratio_norm_0)) +
-  geom_line(aes(y = ave_ratio_norm_0)) +
-  geom_point(aes(y = pred), shape = 21) +
-  geom_line(aes(y = pred), linetype = 2) +
-  scale_color_viridis(discrete = TRUE)
-
-save_plot('plots/p_binding_fit_sample.pdf', p_binding_fit_sample, scale = 1.3,
-          base_height = 3, base_width = 8.5)
-
 
 #plot coefficients (n and EC50) and their relationship to architectures
 
 p_n_consensus <- hill_EC50 %>%
-  filter(consensus > 1) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  filter(weak == 0 & consensus > 1 & conc == 4) %>%
   ggplot(aes(as.factor(consensus), n)) +
-  geom_boxplot(outlier.size = 0.5, size = 0.3, outlier.alpha = 0.5) +
+  geom_jitter(aes(color = background), size = 1,
+              position=position_jitter(width=0.3, height=0), alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA, alpha = 0, outlier.size = 0.5, size = 0.5, 
+               outlier.alpha = 0.5) +
+  scale_color_manual(values = cbPalette3, name = 'background') +
   xlab('consensus sites') +
   theme(axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
 save_plot('plots/p_n_consensus.pdf', p_n_consensus, scale = 1.3, 
-          base_width = 2.25, base_height = 2)
+          base_width = 3.25, base_height = 2)
 
-p_s5_num_cons_num_weak_allback_EC50 <- hill_EC50 %>%
+p_n_expression <- hill_EC50 %>%
+  filter(conc == 4) %>%
+  ggplot(aes(ave_ratio_norm, n)) +
+  geom_point(alpha = 0.3, size = 0.75) +
+  scale_x_log10() +
+  annotation_logticks(sides = 'b') +
+  xlab('induced expression') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_n_expression.pdf', p_n_expression, scale = 1.3, 
+          base_width = 2.5, base_height = 1.5)
+
+p_n_rse <- hill_EC50 %>%
+  filter(conc == 4) %>%
+  ggplot(aes(n_rse, n)) +
+  geom_point(alpha = 0.3, size = 0.75) +
+  xlab('n rse') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_n_rse.pdf', p_n_rse, scale = 1.3, 
+          base_width = 2.5, base_height = 1.5)
+
+p_n_consensus_weak <- hill_EC50 %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  filter(consensus > 1 & conc == 4) %>%
+  ggplot(aes(as.factor(consensus), n)) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 0.75, 
+               position = position_dodge(0.75)) +
+  scale_fill_manual(values = cbPalette7_grad_light, name = 'weak sites') +
+  xlab('consensus sites') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_n_consensus_weak.pdf', p_n_consensus_weak, scale = 1.3, 
+          base_width = 3.25, base_height = 2)
+
+p_s5_num_cons_back_EC50 <- hill_EC50 %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   filter(consensus > 1 & weak == 0) %>%
@@ -2569,10 +2719,108 @@ p_s5_num_cons_num_weak_allback_EC50 <- hill_EC50 %>%
   ylab('EC50') +
   xlab('Number of consensus sites')
 
-save_plot('plots/p_s5_num_cons_num_weak_allback_EC50.pdf', 
-          p_s5_num_cons_num_weak_allback_EC50, scale = 1.3,
+save_plot('plots/p_s5_num_cons_back_EC50.pdf', 
+          p_s5_num_cons_back_EC50, scale = 1.3,
           base_width = 5, base_height = 2)
   
+p_EC50_cons_weak <- hill_EC50 %>%
+  filter(consensus > 1 & conc == 4) %>%
+  ggplot(aes(as.factor(consensus), EC50)) +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 0.75, 
+               position = position_dodge(0.75)) +
+  scale_fill_manual(values = cbPalette7_grad_light, name = 'weak sites') +
+  xlab('consensus sites') +
+  background_grid(major = 'y') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_EC50_cons_weak.pdf', p_EC50_cons_weak, scale = 1.3,
+          base_width = 4, base_height = 2)
+
+p_EC50_expression <- hill_EC50 %>%
+  filter(conc == 4) %>%
+  ggplot(aes(ave_ratio_norm, EC50)) +
+  geom_point(alpha = 0.3, size = 0.75) +
+  scale_x_log10() +
+  annotation_logticks(sides = 'b') +
+  xlab('induced expression') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_EC50_expression.pdf', p_EC50_expression, scale = 1.3,
+          base_width = 2.5, base_height = 1.5)
+
+p_EC50_n <- hill_EC50 %>%
+  filter(conc == 4) %>%
+  ggplot(aes(n, EC50)) +
+  geom_point(alpha = 0.3, size = 0.75) +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_EC50_n.pdf', p_EC50_n, scale = 1.3,
+          base_width = 2.5, base_height = 1.5)
+
+p_EC50_rse <- hill_EC50 %>%
+  filter(conc == 4) %>%
+  ggplot(aes(EC50_rse, EC50)) +
+  geom_point(alpha = 0.3, size = 0.75) +
+  xlab('EC50 rse') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_EC50_rse.pdf', p_EC50_rse, scale = 1.3,
+          base_width = 2.5, base_height = 1.5)
+
+#Fit sp3 induction curves-------------------------------------------------------
+
+trans_back_0_norm_conc_nest_sp3 <- trans_back_0_norm_conc %>%
+  filter(startsWith(name, 'subpool3')) %>%
+  select(-ave_barcode) %>%
+  arrange(desc(ave_ratio_norm)) %>%
+  group_by(subpool, name, most_common, background) %>%
+  nest() %>%
+  slice(1:800)
+
+m_m_nest_fit_nlslm_sp3 <- trans_back_0_norm_conc_nest_sp3 %>%
+  mutate(m_m_fit = map(trans_back_0_norm_conc_nest_sp3$data, m_m_model_nlslm))
+
+m_m_coef_nlslm_sp3 <- m_m_nest_coef(m_m_nest_fit_nlslm_sp3)
+
+#Test fits
+
+hillcoef_sp3 <- m_m_coef_nlslm_sp3 %>%
+  filter(term == 'n') %>%
+  mutate(n_rse = std.error/estimate) %>%
+  filter(n_rse <= 0.25) %>%
+  rename(n = estimate) %>%
+  select(-term, -std.error, -statistic, -p.value) %>%
+  left_join(s3_untidy,
+            by = c('most_common', 'background')) %>%
+  select(-subpool) %>%
+  ungroup()
+
+hill_EC50_sp3 <- m_m_coef_nlslm_sp3 %>%
+  filter(term == 'conc_half_max') %>%
+  mutate(EC50_rse = std.error/estimate) %>%
+  filter(EC50_rse <= 0.25) %>%
+  rename(EC50 = estimate) %>%
+  select(-term, -std.error, -statistic, -p.value) %>%
+  inner_join(hillcoef_sp3, by = c('name', 'most_common', 'background')) %>%
+  ungroup()
+
+m_m_p_r_sp3 <- m_m_nest_pred_resid(m_m_nest_fit_nlslm_sp3) %>%
+  rename(ave_ratio_norm_0 = ave_ratio_norm)
+
+m_m_EC50_n_p_r_sp3 <- left_join(hill_EC50_sp3, m_m_p_r_sp3, 
+                            by = c('subpool', 'name', 'most_common', 
+                                   'background', 'conc'))
+
+test <- m_m_EC50_n_p_r_sp3 %>%
+  ggplot(aes(dist, n)) +
+  facet_grid(~ background) +
+  geom_point(alpha = 0.5)
+
 
 #Combine and compare expression across a different set of concentrations--------
 
