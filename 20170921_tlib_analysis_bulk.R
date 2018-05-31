@@ -18,6 +18,9 @@ cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
 cbPalette7_grad_light <- c('white', '#FDE725FF', '#B8DE29FF', '#55C667FF', 
                            '#1F968BFF', '#39568CFF', '#482677FF')
 
+cbPalette6_grad_light <- c('#FDE725FF', '#B8DE29FF', '#55C667FF', '#1F968BFF', 
+                           '#39568CFF', '#482677FF')
+
 cbPalette3 <- c('grey20', 'springgreen3', 'deepskyblue3')
 
 forskolin2 <- c('white', 'aquamarine3')
@@ -546,9 +549,9 @@ var_conc_exp_rep <- function(df) {
 
 trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
 
-trans_back_norm_conc_rep <- var_conc_exp_rep(trans_back_norm_rep_0_22)
-
 trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
+
+trans_back_norm_conc_rep <- var_conc_exp_rep(trans_back_norm_rep_0_22)
 
 
 #Separate into subpools---------------------------------------------------------
@@ -1379,6 +1382,87 @@ save_plot('plots/BC_per_variant.png',
           p_BC_per_variant, scale = 2.8)
 
 
+#Fitting a model to the 6-site library------------------------------------------
+
+pred_resid <- function(df1, x) {
+  df2 <- df1 %>%
+    add_predictions(x)
+  df3 <- df2 %>%
+    add_residuals(x)
+  return(df3)
+  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
+}
+
+#Linear models
+
+#Including weak sites, all independent, independent background 
+
+ind_site_ind_back <- function(df) {
+  model <- lm(ave_ratio_norm ~ site1 + site2 + site3 + site4 + site5 + site6, 
+              data = df)
+}
+
+subpool5_ncw <- s5_untidy %>%
+  filter(conc == 4 & background == 'v chr5') %>%
+  mutate(site1 = gsub('nosite', 'anosite', site1)) %>%
+  mutate(site2 = gsub('nosite', 'anosite', site2)) %>%
+  mutate(site3 = gsub('nosite', 'anosite', site3)) %>%
+  mutate(site4 = gsub('nosite', 'anosite', site4)) %>%
+  mutate(site5 = gsub('nosite', 'anosite', site5)) %>%
+  mutate(site6 = gsub('nosite', 'anosite', site6)) %>%
+  var_log10()
+
+ind_site_ind_back_fit <- ind_site_ind_back(subpool5_ncw)
+ind_site_ind_back_sum <- tidy(ind_site_ind_back_fit) %>%
+  filter(str_detect(term, '^site')) %>%
+  mutate(term = gsub('consensus', '_consensus', term)) %>%
+  mutate(term = gsub('weak', '_weak', term)) %>%
+  separate(term, into = c('site', 'type'), sep = "_")
+
+ind_site_ind_back_anova <- tidy(anova(ind_site_ind_back_fit)) %>%
+  mutate(term_fctr = factor(term, levels = term))
+ind_site_ind_back_p_r <- pred_resid(subpool5_ncw, ind_site_ind_back_fit)
+
+p_ind_site_ind_back <- ggplot(ind_site_ind_back_p_r, 
+                              aes(ave_ratio_norm, pred, fill = consensus)) +
+  geom_point(shape = 21, alpha = 0.5) +
+  scale_fill_viridis() +
+  xlab('Measured expression') + ylab('Predicted expression') +
+  annotate("text", x = 0.5, y = 2, 
+           label = paste('r =', 
+                         round(cor(ind_site_ind_back_p_r$pred,
+                                   ind_site_ind_back_p_r$ave_ratio_norm,
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
+
+p_ind_site_ind_back_sum <- ggplot(ind_site_ind_back_sum, 
+                                  aes(site, estimate, fill = type)) + 
+  geom_bar(stat = 'identity', position = 'dodge') + 
+  scale_x_discrete(position = 'bottom') + 
+  scale_fill_viridis(discrete = TRUE) + 
+  theme(axis.ticks.x = element_blank()) +
+  ylab('Weight')
+
+p_ind_site_ind_back_anova <- ind_site_ind_back_anova %>%
+  ggplot(aes(term_fctr, sumsq)) + 
+  geom_bar(stat = 'identity') + 
+  ylab('Sum of squares') +
+  xlab('Model term') + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        axis.ticks.x = element_blank())
+
+save_plot('plots/p_ind_site_ind_back_anova.png', p_ind_site_ind_back_anova,
+          scale = 1.3)
+
+p_ind_sit_ind_back_grid <- plot_grid(p_ind_site_ind_back, 
+                                     p_ind_site_ind_back_sum, 
+                                     p_ind_site_ind_back_anova,
+                                     nrow = 3)
+
+save_plot('plots/p_ind_sit_ind_back_grid.png', p_ind_sit_ind_back_grid,
+          scale = 1.3, base_width = 5, base_height = 8)
+
+
 #replicate plots----------------------------------------------------------------
 
 #plot replicates for summed variant expression
@@ -1501,39 +1585,166 @@ write_csv(pearsons_conc, 'pearsons_conc.csv')
 
 #Join datasets, log10 transform 
 
+int_rep_1_2 <- read_tsv('../20171129_intLib/rep_1_2.txt') %>%
+  mutate(ave_med_ratio = (med_ratio_br1 + med_ratio_br2)/2)
+
 int_back_norm_rep_1_2 <- read_tsv('../20171129_intLib/int_back_norm_rep_1_2.txt')
 
-int_rep_1_2 <- read_tsv('../20171129_intLib/rep_1_2.txt')
 
-int_trans <- left_join(int_rep_1_2, rep_0_22_A_B, 
-                       by = c('subpool', 'name', 'most_common'))
+int_trans <- rep_0_22_A_B %>%
+  select(subpool, name, most_common, barcodes_DNA, ratio_22A, barcodes_RNA_22A, 
+         ratio_22B, barcodes_RNA_22B) %>%
+  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
+  right_join(int_rep_1_2, by = c('subpool', 'name', 'most_common'))
 
-log10_int_trans <- var_log10(int_trans) %>%
-  mutate(ave_med_ratio = (med_ratio_br1 + med_ratio_br2)/2) %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2)
+int_trans_back_norm <- trans_back_norm_rep_0_22 %>%
+  select(subpool, name, most_common, background, barcodes_DNA, ratio_22A_norm, 
+         barcodes_RNA_22A, ratio_22B_norm, barcodes_RNA_22B, ave_ratio_22_norm,
+         induction) %>%
+  right_join(int_back_norm_rep_1_2, by = c('subpool', 'name', 'most_common', 
+                                           'background'))
 
-log10_int_trans_sp5 <- log10_int_trans %>%
-  filter(subpool == 'subpool5')
 
-p_var_log10_int_trans_4_sp5 <- ggplot(log10_int_trans_sp5, 
+int_trans_log10 <- var_log10(int_trans)
+
+int_trans_back_norm_log10 <- var_log10(int_trans_back_norm)
+
+
+MPRA_back_norm_ave <- int_trans_back_norm %>%
+  select(subpool, name, background, barcodes_br1, barcodes_br2, 
+         med_ratio_br1_norm, med_ratio_br2_norm, ave_med_ratio_norm, 
+         barcodes_RNA_22A, barcodes_RNA_22B, ratio_22A_norm, ratio_22B_norm,
+         ave_ratio_22_norm) %>%
+  mutate(integrated = (barcodes_br1 + barcodes_br2)/2) %>%
+  mutate(transient = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+  select(-barcodes_br1, -barcodes_br2, -barcodes_RNA_22A, -barcodes_RNA_22B) %>%
+  gather(integrated, transient, key = 'MPRA', value = 'barcodes') %>%
+  rename(integrated = ave_med_ratio_norm) %>%
+  rename(transient = ave_ratio_22_norm) %>%
+  gather(integrated, transient, key = 'MPRA2', value = 'ave_ratio_norm') %>%
+  filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'transient' & MPRA2 == 'transient')) %>%
+  select(-MPRA2)
+
+
+p_var_log10_int_trans_4 <- ggplot(int_trans_log10, 
                                   aes(ave_med_ratio, ave_ratio_22)) +
-  geom_point(alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans_sp5, 
+  geom_point(aes(color = subpool), alpha = 0.2) +
+  geom_point(data = filter(int_trans_log10, 
                            grepl(
                              'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
                              name)), 
              color = 'red', alpha = 0.7) +
   annotation_logticks(scaled = TRUE) +
+  geom_abline(slope = 1) +
   xlab("Integrated\naverage log10\nmedian expression") +
   ylab("Transient\naverage log10\nsum expression") +
   annotate("text", x = -1.5, y = 1,
            label = paste('r =', 
-                         round(cor(log10_int_trans_sp5$ave_med_ratio, 
-                                   log10_int_trans_sp5$ave_ratio_22,
+                         round(cor(int_trans_log10$ave_med_ratio, 
+                                   int_trans_log10$ave_ratio_22,
                                    use = "pairwise.complete.obs", 
                                    method = "pearson"), 2)))
 
 save_plot('plots/var_log10_int_trans_4_sp5.png', p_var_log10_int_trans_4_sp5)
+
+
+#Make untidy df with MPRA format and replicate as variable
+
+MPRA_format <- function(df)  {
+  df_int1 <- df %>%
+    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
+           barcodes_br1, med_ratio_br1_norm) %>%
+    rename(barcodes = barcodes_br1) %>%
+    rename(ratio_norm = med_ratio_br1_norm) %>%
+    mutate(MPRA = 'integrated') %>%
+    mutate(rep = 1)
+  df_int2 <- df %>%
+    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
+           barcodes_br2, med_ratio_br2_norm) %>%
+    rename(barcodes = barcodes_br2) %>%
+    rename(ratio_norm = med_ratio_br2_norm) %>%
+    mutate(MPRA = 'integrated') %>%
+    mutate(rep = 2)
+  df_trans1 <- df %>%
+    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
+           barcodes_RNA_22A, ratio_22A_norm) %>%
+    rename(barcodes = barcodes_RNA_22A) %>%
+    rename(ratio_norm = ratio_22A_norm) %>%
+    mutate(MPRA = 'transient') %>%
+    mutate(rep = 1)
+  df_trans2 <- df %>%
+    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
+           barcodes_RNA_22B, ratio_22B_norm) %>%
+    rename(barcodes = barcodes_RNA_22B) %>%
+    rename(ratio_norm = ratio_22B_norm) %>%
+    mutate(MPRA = 'transient') %>%
+    mutate(rep = 2)
+  df_all <- rbind(df_int1, df_int2, df_trans1, df_trans2)
+  return(df_all)
+}
+
+MPRA_back_norm_rep <- MPRA_format(int_trans_back_norm)
+
+
+#Compare subpool5 features between integrated and transient
+
+#consensus trends per background
+
+s5_int_trans_norm_rep <- subpool5(MPRA_back_norm_rep)
+
+test<- s5_int_trans_norm_rep %>%
+  filter(weak == 0) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(as.factor(consensus), ratio_norm, fill = MPRA)) +
+  facet_grid(background ~ .) +
+  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
+               outlier.alpha = 1, position = position_dodge(0.75),
+               show.legend = TRUE) +
+  panel_border(colour = 'black') +
+  scale_y_log10() +
+  annotation_logticks(sides = 'l') +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  ylab('Average normalized expression (a.u.)') +
+  xlab('Number of consensus CREs')
+
+#weak contribution to consensus
+
+med_weak_over_med_cons <- function(df) {
+  med_cons <- df %>%
+    filter(weak == 0) %>%
+    group_by(background, consensus, MPRA) %>%
+    summarize(cons_med = median(ratio_norm)) %>%
+    ungroup()
+  norm_cons <- df %>%
+    left_join(med_cons, by = c('background', 'consensus', 'MPRA')) %>%
+    mutate(ratio_norm_over_med_cons = ratio_norm/cons_med) %>%
+    ungroup()
+  return(norm_cons)
+}
+
+p_med_weak_over_med_cons_int_trans <- med_weak_over_med_cons(s5_int_trans_norm_rep) %>%
+  filter(weak > 0 & background == 's pGl4') %>%
+  ggplot(aes(as.factor(consensus), ratio_norm_over_med_cons, 
+             fill = as.factor(weak))) +
+  facet_grid(MPRA ~ .) +
+  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
+               outlier.alpha = 1, position = position_dodge(0.75),
+               show.legend = TRUE) +
+  panel_border(colour = 'black') +
+  scale_fill_manual(name = 'number of\nweak sites', 
+                    values = cbPalette6_grad_light) +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  geom_hline(yintercept = 1, alpha = 0.25, linetype = 2) +
+  geom_vline(xintercept = c(1.5:5.5), alpha = 0.25) +
+  ylab('Expression change with weak CRE\naddition to n consensus sites (a.u.)') +
+  xlab('Number of consensus sites')
+
+save_plot('plots/p_med_weak_over_med_cons_int_trans.pdf', 
+          p_med_weak_over_med_cons_int_trans, scale = 1.3, base_width = 5.25, 
+          base_height = 4.25)
 
 
 #Fitting a simple linear model integrated_exp ~ transient_exp(4 µM)
@@ -1610,69 +1821,6 @@ p_res_int_trans_sp <- ggplot(p_r_all, aes(x = subpool, y = resid)) +
   panel_border()
 
 #Analyze differences between transient and integrated using features within each subpool
-
-subpool3_int_trans <- 
-  filter(log10_MPRA, subpool == "subpool3") %>%
-  ungroup () %>%
-  select(-subpool) %>%
-  mutate(name = gsub('2BS ', '', name), 
-         name = gsub(' bp spacing ', '_', name)) %>%
-  separate(name, 
-           into = c("subpool", "spacing", "fluff2", "fluff3", "dist", "fluff4"),
-           sep = "_", convert = TRUE
-  ) %>%
-  select(-subpool, -fluff2, -fluff3, -fluff4) %>%
-  mutate(dist = as.integer(dist + 2)) %>%
-  mutate(spacing = 
-           ifelse(spacing != as.integer(0), 
-                  as.integer(spacing + 4), as.integer(spacing))) 
-
-subpool5_int_trans <- 
-  filter(log10_MPRA, subpool == "subpool5") %>%
-  ungroup () %>%
-  select(-subpool) %>%
-  mutate(name = gsub('no_site', 'nosite', name)) %>%
-  mutate(
-    name = gsub('_v chr9', '', name),
-    name = gsub('_v chr5', '', name),
-    name = gsub('_s pGl4', '', name)
-    ) %>%
-  mutate(design = name) %>%
-  separate(name, into = c(
-    "subpool", "site1", "site2", "site3", "site4", "site5", "site6"), sep = "_"
-    ) %>%
-  select(-subpool) %>%
-  mutate(consensus = str_detect(site1, "consensus") + 
-           str_detect(site2, "consensus") + 
-           str_detect(site3, "consensus") + 
-           str_detect(site4, "consensus") + 
-           str_detect(site5, "consensus") + 
-           str_detect(site6, "consensus")) %>%
-  mutate(weak = str_detect(site1, "weak") +
-           str_detect(site2, "weak") +
-           str_detect(site3, "weak") +
-           str_detect(site4, "weak") +
-           str_detect(site5, "weak") +
-           str_detect(site6, "weak")) %>%
-  mutate(nosite = str_detect(site1, "nosite") +
-           str_detect(site2, "nosite") +
-           str_detect(site3, "nosite") +
-           str_detect(site4, "nosite") +
-           str_detect(site5, "nosite") +
-           str_detect(site6, "nosite")) %>%
-  mutate(total_sites = consensus + weak)
-
-subpool5_int_trans_cons <- subpool5_int_trans %>%
-  filter(weak == 0) %>%
-  mutate(site1 = as.integer(str_detect(site1, 'consensus'))) %>%
-  mutate(site2 = as.integer(str_detect(site2, 'consensus'))) %>%
-  mutate(site3 = as.integer(str_detect(site3, 'consensus'))) %>%
-  mutate(site4 = as.integer(str_detect(site4, 'consensus'))) %>%
-  mutate(site5 = as.integer(str_detect(site5, 'consensus'))) %>%
-  mutate(site6 = as.integer(str_detect(site6, 'consensus')))
-  
-#If want to have site as one variable figure out a better way than 
-  #gather(site1, site2, site3, site4, site5, site6, key = 'site', value = 'filled')
   
 #plot subpool features vs. residuals between transient to integrated model
 
@@ -1718,429 +1866,6 @@ ggplot(NULL, aes(x = '', y = ave_ratio_norm, color = MPRA)) +
   annotation_logticks(sides = 'l') +
   ylab('log10 average normalized ratio') +
   xlab('Binding site architecture')
-
-#Plot comparisons between trans concentrations and integrated
-
-p_var_log10_int_trans_0 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_0_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_0_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_0_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_0_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_2_5 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_2_5_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_2_5_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_2_5_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_2_5_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_2_4 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_2_4_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_2_4_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_2_4_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_2_4_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_2_3 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_2_3_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_2_3_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_2_3_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_2_3_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_2_2 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_2_2_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_2_2_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_2_2_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_2_2_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_2_1 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_2_1_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_2_1_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_2_1_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_2_1_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_20 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_20_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_20_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_20_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_20_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_22 <- ggplot(NULL, aes(ave_med_ratio_norm, ave_ratio_22_norm)) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool5'),
-             color = '#482677FF', alpha = 0.2) +
-  geom_point(data = filter(log10_int_trans, subpool == 'subpool3'),
-             color = '#2D708EFF', alpha = 0.2) +
-  geom_density2d(data = log10_int_trans, alpha = 0.7, color = 'black', size = 0.2, bins = 10) +
-  geom_point(data = filter(log10_int_trans, subpool == 'control'),
-             color = '#3CBB75FF', alpha = 0.5) +
-  geom_point(data = filter(log10_int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             color = '#B8DE29FF', alpha = 0.7) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  ylab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  scale_y_continuous(breaks = c(-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8), 
-                     limits = c(-2, 8.5)) + 
-  annotate("text", x = 0, y = 7,
-           label = paste('r =', round(
-             cor(
-               log10_int_trans$ave_med_ratio_norm, 
-               log10_int_trans$ave_ratio_22_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) +
-  annotate("text", x = 0, y = 6, color = '#2D708EFF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool3')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool3')$ave_ratio_22_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  ) + 
-  annotate("text", x = 0, y = 5, color = '#482677FF',
-           label = paste('r =', round(
-             cor(
-               filter(log10_int_trans, subpool == 'subpool5')$ave_med_ratio_norm, 
-               filter(log10_int_trans, subpool == 'subpool5')$ave_ratio_22_norm,
-               use = "pairwise.complete.obs", method = "pearson"
-             ), 2
-           )
-           )
-  )
-
-p_var_log10_int_trans_grid <- plot_grid(
-  p_var_log10_int_trans_0, p_var_log10_int_trans_2_5, p_var_log10_int_trans_2_4, 
-  p_var_log10_int_trans_2_3, p_var_log10_int_trans_2_2, p_var_log10_int_trans_2_1, 
-  p_var_log10_int_trans_20, p_var_log10_int_trans_22, 
-  labels = c(
-    "    0 µM", "2^-5 µM", "2^-4 µM","2^-3 µM", "2^-2 µM", "2^-1 µM"," 2^0 µM", " 2^2 µM"),
-  nrow = 3, ncol = 3, align = 'hv', hjust = -2.5, vjust = 0.5, scale = 0.9)
-
-save_plot('plots/p_var_log10_int_trans_grid.png', 
-          p_var_log10_int_trans_grid, base_height = 12, base_width = 12)
-
-save_plot('plots/p_var_log10_int_trans_22.png', p_var_log10_int_trans_22)
 
 
 #Comparison to Luciferase assays------------------------------------------------
@@ -2541,16 +2266,6 @@ trans_back_0_norm_conc_nest <- trans_back_0_norm_conc %>%
   filter(!grepl('^subpool5_no_site_no_site_no_site_no_site_no_site_no_site', 
                 name)) %>%
   filter(subpool == 'subpool5') %>%
-  arrange(desc(ave_ratio_norm)) %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest() %>%
-  slice(1:1500)
-
-trans_back_0_norm_conc_nest_sp3 <- trans_back_0_norm_conc %>%
-  filter(subpool == 'subpool3') %>%
-  select(-ave_barcode) %>%
-  filter(!grepl('^subpool5_no_site_no_site_no_site_no_site_no_site_no_site', 
-                name)) %>%
   arrange(desc(ave_ratio_norm)) %>%
   group_by(subpool, name, most_common, background) %>%
   nest() %>%
