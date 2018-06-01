@@ -1583,7 +1583,7 @@ write_csv(pearsons_conc, 'pearsons_conc.csv')
 
 #Comparison to integrated-------------------------------------------------------------------
 
-#Join datasets, log10 transform 
+#Join datasets
 
 int_rep_1_2 <- read_tsv('../20171129_intLib/rep_1_2.txt') %>%
   mutate(ave_med_ratio = (med_ratio_br1 + med_ratio_br2)/2)
@@ -1688,11 +1688,29 @@ MPRA_back_norm_rep <- MPRA_format(int_trans_back_norm)
 
 #Compare subpool5 features between integrated and transient
 
-#consensus trends per background
-
 s5_int_trans_norm_rep <- subpool5(MPRA_back_norm_rep)
 
-test<- s5_int_trans_norm_rep %>%
+#Compare background-normalized expression across MPRA conditions, highlighting
+#certain features
+
+p_s5_int_trans_norm_rep_feat <- s5_int_trans_norm_rep %>%
+  ggplot(aes(ave_med_ratio_norm, ave_ratio_22_norm, color = as.factor(weak))) +
+  facet_grid(~ background) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1) +
+  scale_y_log10(limits = c(0.5, 250)) +
+  scale_x_log10(limits = c(0.5, 250)) +
+  annotation_logticks() +
+  panel_border(colour = 'black') +
+  scale_color_viridis(discrete = TRUE) +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  xlab('Average integrated expression (a.u.)') +
+  ylab('Average transient expression (a.u.)')
+
+#consensus trends per background
+
+test2 <- s5_int_trans_norm_rep %>%
   filter(weak == 0) %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
@@ -1710,6 +1728,31 @@ test<- s5_int_trans_norm_rep %>%
   xlab('Number of consensus CREs')
 
 #weak contribution to consensus
+
+p_weak_cons_int_trans <- s5_int_trans_norm_rep %>%
+  filter(background == 's pGl4' & MPRA == 'integrated' & consensus != 6) %>%
+  ggplot(aes(as.factor(consensus), ratio_norm, fill = as.factor(weak))) +
+  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
+               outlier.alpha = 1, position = position_dodge(0.75),
+               show.legend = TRUE) +
+  geom_jitter(data = filter(s5_int_trans_norm_rep, 
+                            background == 's pGl4' & MPRA == 'integrated' & consensus == 6),
+              aes(as.factor(consensus), ratio_norm, fill = as.factor(weak)),
+              shape = 21, size = 1, 
+              position=position_jitter(width=0.2, height=0)) +
+  panel_border(colour = 'black') +
+  scale_y_log10() +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'y', minor = 'none') +
+  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
+  ylab('Normalized expression\nper replicate (a.u.)') +
+  xlab('Number of consensus sites')
+
+save_plot('plots/p_weak_cons_int_trans.pdf', p_weak_cons_int_trans,
+          scale = 1.3, base_height = 2.25, base_width = 5.25)
 
 med_weak_over_med_cons <- function(df) {
   med_cons <- df %>%
