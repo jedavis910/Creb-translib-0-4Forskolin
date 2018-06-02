@@ -697,12 +697,6 @@ save_plot('plots/p_subpool3_spa_4_vchr9.pdf', p_subpool3_spa_4_vchr9,
 
 #v chr9 spacing overlay plots
 
-test <- s3_untidy %>%
-  filter(background == 'v chr9' & conc == 4) %>%
-  group_by(spacing, dist) %>%
-  arrange(spacing, dist) %>%
-  select(-most_common)
-
 p_subpool3_spa_4_vchr9_5_10 <- s3_untidy %>%
   filter(conc == 4 & background == 'v chr9' & dist < 60 & (spacing == 5 | spacing == 10)) %>%
   ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
@@ -1403,7 +1397,7 @@ ind_site_ind_back <- function(df) {
 }
 
 subpool5_ncw <- s5_untidy %>%
-  filter(conc == 4 & background == 'v chr5') %>%
+  filter(conc == 4 & background == 's pGl4') %>%
   mutate(site1 = gsub('nosite', 'anosite', site1)) %>%
   mutate(site2 = gsub('nosite', 'anosite', site2)) %>%
   mutate(site3 = gsub('nosite', 'anosite', site3)) %>%
@@ -1605,11 +1599,6 @@ int_trans_back_norm <- trans_back_norm_rep_0_22 %>%
                                            'background'))
 
 
-int_trans_log10 <- var_log10(int_trans)
-
-int_trans_back_norm_log10 <- var_log10(int_trans_back_norm)
-
-
 MPRA_back_norm_ave <- int_trans_back_norm %>%
   select(subpool, name, background, barcodes_br1, barcodes_br2, 
          med_ratio_br1_norm, med_ratio_br2_norm, ave_med_ratio_norm, 
@@ -1619,12 +1608,14 @@ MPRA_back_norm_ave <- int_trans_back_norm %>%
   mutate(transient = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
   select(-barcodes_br1, -barcodes_br2, -barcodes_RNA_22A, -barcodes_RNA_22B) %>%
   gather(integrated, transient, key = 'MPRA', value = 'barcodes') %>%
-  rename(integrated = ave_med_ratio_norm) %>%
-  rename(transient = ave_ratio_22_norm) %>%
+  mutate(integrated = ave_med_ratio_norm) %>%
+  mutate(transient = ave_ratio_22_norm) %>%
   gather(integrated, transient, key = 'MPRA2', value = 'ave_ratio_norm') %>%
   filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'transient' & MPRA2 == 'transient')) %>%
   select(-MPRA2)
 
+
+int_trans_log10 <- var_log10(int_trans)
 
 p_var_log10_int_trans_4 <- ggplot(int_trans_log10, 
                                   aes(ave_med_ratio, ave_ratio_22)) +
@@ -1648,126 +1639,99 @@ p_var_log10_int_trans_4 <- ggplot(int_trans_log10,
 save_plot('plots/var_log10_int_trans_4_sp5.png', p_var_log10_int_trans_4_sp5)
 
 
-#Make untidy df with MPRA format and replicate as variable
-
-MPRA_format <- function(df)  {
-  df_int1 <- df %>%
-    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
-           barcodes_br1, med_ratio_br1_norm) %>%
-    rename(barcodes = barcodes_br1) %>%
-    rename(ratio_norm = med_ratio_br1_norm) %>%
-    mutate(MPRA = 'integrated') %>%
-    mutate(rep = 1)
-  df_int2 <- df %>%
-    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
-           barcodes_br2, med_ratio_br2_norm) %>%
-    rename(barcodes = barcodes_br2) %>%
-    rename(ratio_norm = med_ratio_br2_norm) %>%
-    mutate(MPRA = 'integrated') %>%
-    mutate(rep = 2)
-  df_trans1 <- df %>%
-    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
-           barcodes_RNA_22A, ratio_22A_norm) %>%
-    rename(barcodes = barcodes_RNA_22A) %>%
-    rename(ratio_norm = ratio_22A_norm) %>%
-    mutate(MPRA = 'transient') %>%
-    mutate(rep = 1)
-  df_trans2 <- df %>%
-    select(subpool, name, background, ave_med_ratio_norm, ave_ratio_22_norm,
-           barcodes_RNA_22B, ratio_22B_norm) %>%
-    rename(barcodes = barcodes_RNA_22B) %>%
-    rename(ratio_norm = ratio_22B_norm) %>%
-    mutate(MPRA = 'transient') %>%
-    mutate(rep = 2)
-  df_all <- rbind(df_int1, df_int2, df_trans1, df_trans2)
-  return(df_all)
-}
-
-MPRA_back_norm_rep <- MPRA_format(int_trans_back_norm)
-
-
 #Compare subpool5 features between integrated and transient
 
-s5_int_trans_norm_rep <- subpool5(MPRA_back_norm_rep)
+s5_int_trans_norm <- subpool5(MPRA_back_norm_ave)
 
-#Compare background-normalized expression across MPRA conditions, highlighting
-#certain features
+#Show that subpool5 in integrated is replicable 
 
-p_s5_int_trans_norm_rep_feat <- s5_int_trans_norm_rep %>%
-  ggplot(aes(ave_med_ratio_norm, ave_ratio_22_norm, color = as.factor(weak))) +
-  facet_grid(~ background) +
-  geom_point(alpha = 0.5) +
-  geom_abline(slope = 1) +
-  scale_y_log10(limits = c(0.5, 250)) +
-  scale_x_log10(limits = c(0.5, 250)) +
+p_s5_int_rep <- s5_int_trans_norm %>%
+  ggplot(aes(med_ratio_br1_norm, med_ratio_br2_norm)) +
+  geom_point(alpha = 0.2) +
   annotation_logticks() +
-  panel_border(colour = 'black') +
-  scale_color_viridis(discrete = TRUE) +
-  theme(legend.position = 'top', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  xlab('Average integrated expression (a.u.)') +
-  ylab('Average transient expression (a.u.)')
-
-#consensus trends per background
-
-test2 <- s5_int_trans_norm_rep %>%
-  filter(weak == 0) %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(as.factor(consensus), ratio_norm, fill = MPRA)) +
-  facet_grid(background ~ .) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) +
-  panel_border(colour = 'black') +
+  scale_x_log10() +
   scale_y_log10() +
-  annotation_logticks(sides = 'l') +
+  panel_border(colour = 'black') +
   theme(legend.position = 'top', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white")) +
-  ylab('Average normalized expression (a.u.)') +
-  xlab('Number of consensus CREs')
+  xlab('Integrated rep. 1\nnormalized expression (a.u.)') +
+  ylab('Integrated rep. 2\nnormalized expression (a.u.)') +
+  annotate("text", x = 2, y = 100, 
+           label = paste('r =', 
+                         round(cor(log10(s5_int_trans_norm$med_ratio_br1_norm),
+                                   log10(s5_int_trans_norm$med_ratio_br2_norm),
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
+
+save_plot('plots/p_s5_int_rep.pdf', p_s5_int_rep,
+          scale = 1.3, base_width = 2.75, base_height = 2.5)
+
+#Compare background-normalized expression across MPRA conditions
+
+p_s5_int_trans_norm <- s5_int_trans_norm %>%
+  ggplot(aes(ave_med_ratio_norm, ave_ratio_22_norm)) +
+  geom_point(alpha = 0.2) +
+  geom_abline(slope = 1, color = 'red') +
+  annotation_logticks() +
+  scale_x_log10(limits = c(0.5, 250)) +
+  scale_y_log10(limits = c(0.5, 250)) +
+  panel_border(colour = 'black') +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  xlab('Integrated average\nnormalized expression (a.u.)') +
+  ylab('Transient average\nnormalized expression (a.u.)') +
+  annotate('text', x = 60, y = 200, color = 'red', label = paste('slope = 1')) +
+  annotate("text", x = 2, y = 100, 
+           label = paste('r =', 
+                         round(cor(log10(s5_int_trans_norm$ave_med_ratio_norm),
+                                   log10(s5_int_trans_norm$ave_ratio_22_norm),
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
+
+save_plot('plots/p_s5_int_trans_norm.pdf', p_s5_int_trans_norm,
+          scale = 1.3, base_width = 2.75, base_height = 2.5)
+
 
 #weak contribution to consensus
 
-p_weak_cons_int_trans <- s5_int_trans_norm_rep %>%
-  filter(background == 's pGl4' & MPRA == 'integrated' & consensus != 6) %>%
-  ggplot(aes(as.factor(consensus), ratio_norm, fill = as.factor(weak))) +
+p_weak_cons_int_trans <- s5_int_trans_norm %>%
+  filter(background == 's pGl4' & MPRA == 'integrated') %>%
+  ggplot(aes(as.factor(consensus), ave_ratio_norm, fill = as.factor(weak))) +
   geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
                outlier.alpha = 1, position = position_dodge(0.75),
                show.legend = TRUE) +
-  geom_jitter(data = filter(s5_int_trans_norm_rep, 
-                            background == 's pGl4' & MPRA == 'integrated' & consensus == 6),
-              aes(as.factor(consensus), ratio_norm, fill = as.factor(weak)),
-              shape = 21, size = 1, 
-              position=position_jitter(width=0.2, height=0)) +
   panel_border(colour = 'black') +
   scale_y_log10() +
   annotation_logticks(sides = 'l') +
   background_grid(major = 'y', minor = 'none') +
-  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light) +
+  scale_fill_manual(name = 'number of\nweak sites', 
+                    values = cbPalette7_grad_light) +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white")) +
   geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  ylab('Normalized expression\nper replicate (a.u.)') +
+  ylab('Average normalized\nexpression (a.u.)') +
   xlab('Number of consensus sites')
 
 save_plot('plots/p_weak_cons_int_trans.pdf', p_weak_cons_int_trans,
           scale = 1.3, base_height = 2.25, base_width = 5.25)
 
+#Show effect of adding weak sites to consensus sites per MPRA
+
 med_weak_over_med_cons <- function(df) {
   med_cons <- df %>%
     filter(weak == 0) %>%
     group_by(background, consensus, MPRA) %>%
-    summarize(cons_med = median(ratio_norm)) %>%
+    summarize(cons_med = median(ave_ratio_norm)) %>%
     ungroup()
   norm_cons <- df %>%
     left_join(med_cons, by = c('background', 'consensus', 'MPRA')) %>%
-    mutate(ratio_norm_over_med_cons = ratio_norm/cons_med) %>%
+    mutate(ratio_norm_over_med_cons = ave_ratio_norm/cons_med) %>%
     ungroup()
   return(norm_cons)
 }
 
-p_med_weak_over_med_cons_int_trans <- med_weak_over_med_cons(s5_int_trans_norm_rep) %>%
+p_med_weak_over_med_cons_int_trans <- s5_int_trans_norm %>%
+  med_weak_over_med_cons() %>%
   filter(weak > 0 & background == 's pGl4') %>%
   ggplot(aes(as.factor(consensus), ratio_norm_over_med_cons, 
              fill = as.factor(weak))) +
@@ -1778,7 +1742,7 @@ p_med_weak_over_med_cons_int_trans <- med_weak_over_med_cons(s5_int_trans_norm_r
   panel_border(colour = 'black') +
   scale_fill_manual(name = 'number of\nweak sites', 
                     values = cbPalette6_grad_light) +
-  theme(legend.position = 'top', axis.ticks.x = element_blank(),
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white")) +
   geom_hline(yintercept = 1, alpha = 0.25, linetype = 2) +
   geom_vline(xintercept = c(1.5:5.5), alpha = 0.25) +
@@ -1787,129 +1751,140 @@ p_med_weak_over_med_cons_int_trans <- med_weak_over_med_cons(s5_int_trans_norm_r
 
 save_plot('plots/p_med_weak_over_med_cons_int_trans.pdf', 
           p_med_weak_over_med_cons_int_trans, scale = 1.3, base_width = 5.25, 
-          base_height = 4.25)
+          base_height = 3.75)
 
 
-#Fitting a simple linear model integrated_exp ~ transient_exp(4 µM)
+#Compare subpool3 features between integrated and transient. Need to compare 
+#expression that is not background normalized as ratio of subpool3 in transient
+#is already skewed due to ratio of subpools being different in plasmid DNA 
+#sequencing sample. This wouldn't affect correlation between integrated and 
+#transient, but it would cause an overall shift in expression so that the actual
+#values are incomparable. If I used background-normalized expression this would
+#skew the data again according to ratio of subpool5.
 
-log10_int_trans_22 <- log10_int_trans %>%
-  select(subpool, name, background, barcodes_br1, barcodes_br2, ave_med_ratio_norm, 
-         barcodes_RNA_22A, barcodes_RNA_22B, ave_ratio_22_norm) %>%
-  mutate(integrated = (barcodes_br1 + barcodes_br2)/2) %>%
+s3_int_trans <- int_trans %>%
+  select(subpool, name, barcodes_RNA_br1, barcodes_RNA_br2, 
+         med_ratio_br1, med_ratio_br2, ave_med_ratio, 
+         barcodes_RNA_22A, barcodes_RNA_22B, ratio_22A, ratio_22B,
+         ave_ratio_22) %>%
+  mutate(integrated = (barcodes_RNA_br1 + barcodes_RNA_br2)/2) %>%
   mutate(transient = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
-  select(-barcodes_br1, -barcodes_br2, -barcodes_RNA_22A, -barcodes_RNA_22B)
-
-log10_MPRA <- log10_int_trans %>%
-  select(subpool, name, background, barcodes_br1, barcodes_br2, ave_med_ratio_norm, 
-         barcodes_RNA_22A, barcodes_RNA_22B, ave_ratio_22_norm) %>%
-  mutate(integrated = (barcodes_br1 + barcodes_br2)/2) %>%
-  mutate(transient = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
-  select(-barcodes_br1, -barcodes_br2, -barcodes_RNA_22A, -barcodes_RNA_22B) %>%
+  select(-barcodes_RNA_br1, -barcodes_RNA_br2, -barcodes_RNA_22A, -barcodes_RNA_22B) %>%
   gather(integrated, transient, key = 'MPRA', value = 'barcodes') %>%
-  rename(integrated = ave_med_ratio_norm) %>%
-  rename(transient = ave_ratio_22_norm) %>%
-  gather(integrated, transient, key = 'MPRA2', value = 'ave_ratio_norm') %>%
+  mutate(integrated = ave_med_ratio) %>%
+  mutate(transient = ave_ratio_22) %>%
+  gather(integrated, transient, key = 'MPRA2', value = 'ave_ratio') %>%
   filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'transient' & MPRA2 == 'transient')) %>%
-  select(-MPRA2)
-  
+  select(-MPRA2) %>%
+  filter(subpool == 'subpool3') %>%
+  mutate(
+    name = gsub('Smith R. Vista chr9:83712599-83712766', 'v chr9', name),
+    name = gsub('Vista Chr5:88673410-88674494', 'v chr5', name),
+    name = gsub('scramble pGL4.29 Promega 1-63 \\+ 1-87', 's pGl4', name)) %>%
+  mutate(background = name) %>%
+  mutate(background = str_sub(background, 
+                              nchar(background)-5, 
+                              nchar(background))) %>%
+  subpool3()
 
-lm_trans_int <- function(df) {
-  model <- lm(ave_med_ratio_norm ~ ave_ratio_22_norm, data = df)
-}
 
-pre_res_trans_int <- function(df1, x) {
-  df2 <- df1 %>%
-    add_predictions(x)
-  df3 <- df2 %>%
-    add_residuals(x)
-  return(df3)
-  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
-}
+#subpool3 is not as replicable in integrated assay, which influences downtstream
+#comparisons
 
-#testing a simple linear model
+p_s3_int_rep <- s3_int_trans %>%
+  ggplot(aes(med_ratio_br1, med_ratio_br2)) +
+  geom_point(alpha = 0.2) +
+  annotation_logticks() +
+  scale_x_log10() +
+  scale_y_log10() +
+  panel_border(colour = 'black') +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  xlab('Integrated rep. 1\nmedian expression (a.u.)') +
+  ylab('Integrated rep. 2\nmedian expression (a.u.)') +
+  annotate("text", x = 0.05, y = 1, 
+           label = paste('r =', 
+                         round(cor(log10(s3_int_trans$med_ratio_br1),
+                                   log10(s3_int_trans$med_ratio_br2),
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
 
-lm_all <- lm_trans_int(log10_int_trans_22)
-p_r_all <- pre_res_trans_int(log10_int_trans_22, lm_all)
+save_plot('plots/p_s3_int_rep.pdf', p_s3_int_rep, scale = 1.3,
+          base_width = 2.5, base_height = 2.5)
 
-p_lm_int_trans <- ggplot(p_r_all, aes(x = ave_ratio_22_norm)) +
-  facet_grid(subpool ~ background) +
-  geom_point(aes(y = ave_med_ratio_norm, color = ave_int_barcode), alpha = 0.5) +
-  scale_color_viridis() +
-  geom_line(aes(y = pred), color = 'red') +
-  annotation_logticks(scaled = TRUE) +
-  ylab("Ave log10 variant median\nnorm. RNA/DNA integrated") +
-  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  panel_border()
+#subpool3 doesn't correlate as well between integrated and transient assays
 
-save_plot('plots/p_lm_int_trans.png', p_lm_int_trans, base_width = 10, base_height = 7)
+p_s3_int_trans <- s3_int_trans %>%
+  ggplot(aes(ave_med_ratio, ave_ratio_22)) +
+  geom_point(alpha = 0.2) +
+  annotation_logticks() +
+  scale_x_log10() +
+  scale_y_log10() +
+  panel_border(colour = 'black') +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  xlab('Integrated average\nexpression (a.u.)') +
+  ylab('Transient average\nexpression (a.u.)') +
+  annotate("text", x = 0.05, y = 1, 
+           label = paste('r =', 
+                         round(cor(log10(s3_int_trans$ave_med_ratio),
+                                   log10(s3_int_trans$ave_ratio_22),
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
 
-p_res_int_trans <- ggplot(p_r_all, aes(ave_ratio_22_norm, resid)) +
-  facet_grid(subpool ~ background) +
-  geom_point(aes(color = ave_int_barcode), alpha = 0.5) +
-  scale_color_viridis() +
-  geom_ref_line(h = 0, colour = 'black', size = 1) +
-  annotation_logticks(scaled = TRUE, sides = 'b') +
-  ylab("Residuals") +
-  xlab("Ave log10 variant norm.\nsum RNA/DNA transient") +
-  panel_border()
+save_plot('plots/p_s3_int_trans.pdf', p_s3_int_trans, scale = 1.3,
+          base_width = 2.5, base_height = 2.5)
 
-save_plot('plots/p_res_int_trans.png', p_res_int_trans, base_width = 13, base_height = 7)
+#Subpool3 despite noise seems to have same distance effects across background
 
-p_res_int_trans_sp <- ggplot(p_r_all, aes(x = subpool, y = resid)) +
-  facet_grid(. ~ background) +
-  geom_boxplot(alpha = 0.5) +
-  geom_ref_line(h = 0, colour = 'black', size = 1) +
-  ylab("Residuals") +
-  xlab("Subpool") +
-  panel_border()
-
-#Analyze differences between transient and integrated using features within each subpool
-  
-#plot subpool features vs. residuals between transient to integrated model
-
-p_subpool5_int_trans_consw <- ggplot(subpool5_int_trans, 
-                                    aes(x = as.factor(consensus), y = ave_ratio_norm,
-                                               color = MPRA)) +
-  geom_boxplot() +
-  facet_grid(. ~ background) +
-  xlab('Number of consensus binding sites') +
-  scale_y_continuous('Average\nnormalized expression') +
-  panel_border()
-
-save_plot('plots/p_subpool5_int_trans_consw.png', p_subpool5_int_trans_consw,
-          base_height = 4, base_width = 8)
-
-p_subpool5_int_trans_cons <- ggplot(filter(subpool5_int_trans, weak == 0), 
-                                     aes(x = as.factor(consensus), y = ave_ratio_norm,
-                                         color = MPRA)) +
-  geom_boxplot() +
-  facet_grid(. ~ background) +
-  xlab('Number of consensus binding sites') +
-  scale_y_continuous('Average\nnormalized expression') +
-  panel_border()
-
-save_plot('plots/p_subpool5_int_trans_cons.png', p_subpool5_int_trans_cons,
-          base_height = 4, base_width = 8)
-
-ggplot(NULL, aes(x = '', y = ave_ratio_norm, color = MPRA)) +
-  facet_grid(background ~ .) +
-  geom_point(data = filter(subpool5_int_trans_cons, site1 == 1 & total_sites == 1), 
-             aes(x = 'site1'), size = 2, show.legend = FALSE) +
-  geom_point(data = filter(subpool5_int_trans_cons, site2 == 1 & total_sites == 1), 
-             aes(x = 'site2'), size = 2, show.legend = FALSE) +
-  geom_point(data = filter(subpool5_int_trans_cons, site3 == 1 & total_sites == 1), 
-             aes(x = 'site3'), size = 2, show.legend = FALSE) +
-  geom_point(data = filter(subpool5_int_trans_cons, site4 == 1 & total_sites == 1), 
-             aes(x = 'site4'), size = 2, show.legend = FALSE) +
-  geom_point(data = filter(subpool5_int_trans_cons, site5 == 1 & total_sites == 1), 
-             aes(x = 'site5'), size = 2, show.legend = FALSE) +
-  geom_point(data = filter(subpool5_int_trans_cons, site6 == 1 & total_sites == 1), 
-             aes(x = 'site6'), size = 2, show.legend = FALSE) +
-  panel_border() +
+p_space_dist_int_trans <- s3_int_trans %>%
+  filter(spacing != 0 & spacing != 70) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = MPRA)) + 
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.1, size = 0.4, se = FALSE) +
+  facet_grid(spacing ~ background) + 
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  scale_y_log10() +
   annotation_logticks(sides = 'l') +
-  ylab('log10 average normalized ratio') +
-  xlab('Binding site architecture')
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 150, by = 10)) +
+  theme(legend.position = 'right',
+        strip.background = element_rect(colour="black", fill="white"))
 
+save_plot('plots/p_space_dist_int_trans.pdf', p_space_dist_int_trans, 
+          scale = 1.3, base_width = 11, base_height = 4)
+
+#Analysis on periodicity in integrated subpool3 is difficult with noise
+
+p_s3_spa_int_trans_vchr9_5_10 <- s3_int_trans %>%
+  filter(background == 'v chr9' & dist < 60 & (spacing == 5 | spacing == 10)) %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  facet_grid(MPRA ~ .) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
+  scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  scale_y_log10() +
+  geom_vline(xintercept = seq(from = 14, to = 24, by = 10), color = 'gray20', 
+             linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = seq(from = 18, to = 28, by = 10), 
+             color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance along background (bp)", 
+                     breaks = seq(from = 0, to = 60, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+save_plot('plots/p_s3_spa_int_trans_vchr9_5_10.pdf', 
+          p_s3_spa_int_trans_vchr9_5_10, 
+          scale = 1.3, base_width = 5, base_height = 3)
+  
 
 #Comparison to Luciferase assays------------------------------------------------
 
