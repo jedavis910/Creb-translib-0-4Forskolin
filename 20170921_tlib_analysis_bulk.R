@@ -14,19 +14,14 @@ library(updateR)
 
 cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
                 '#B8DE29FF', '#FDE725FF')
-
 cbPalette7_grad_light <- c('white', '#FDE725FF', '#B8DE29FF', '#55C667FF', 
                            '#1F968BFF', '#39568CFF', '#482677FF')
-
 cbPalette6_grad_light <- c('#FDE725FF', '#B8DE29FF', '#55C667FF', '#1F968BFF', 
                            '#39568CFF', '#482677FF')
-
-cbPalette3 <- c('grey20', 'springgreen3', 'deepskyblue3')
-
 forskolin2 <- c('white', 'aquamarine3')
-
-cbpalette5 <- c('#440154FF', '#39568CFF', '#238A8DFF', '#29AF7FFF', 
+cbPalette5 <- c('#440154FF', '#39568CFF', '#238A8DFF', '#29AF7FFF', 
                 '#73D055FF')
+cbPalette4 <- c('#481567FF', '#33638DFF', '#20A387FF','#95D840FF')
 
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
@@ -444,6 +439,10 @@ var_conc_exp <- function(df) {
   return(df_0_22)
 }
 
+trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
+
+trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
+
 var_conc_exp_rep <- function(df) {
   df_0A <- df %>%
     select(subpool, name, most_common, background, barcodes_RNA_0A, 
@@ -546,10 +545,6 @@ var_conc_exp_rep <- function(df) {
                    df_22A, df_22B)
   return(df_0_22)
 }
-
-trans_back_norm_conc <- var_conc_exp(trans_back_norm_rep_0_22)
-
-trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
 
 trans_back_norm_conc_rep <- var_conc_exp_rep(trans_back_norm_rep_0_22)
 
@@ -766,9 +761,6 @@ save_plot('plots/p_subpool3_spa_4_vchr9_10_20.pdf',
 
 #plot spacing overlays in s pgl4 background
 
-test <- s3_untidy %>%
-  filter(background == 's pGl4' & conc == 4)
-
 p_subpool3_spa_4_spgl4_5_10 <- s3_untidy %>%
   filter(conc == 4 & background == 's pGl4' & dist < 60 & (spacing == 5 | spacing == 10)) %>%
   ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
@@ -847,44 +839,47 @@ s3_untidy_bin20bp <- s3_untidy %>%
 p_subpool3_dist_4_bin20bp_back <- s3_untidy_bin20bp %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  filter(conc == 4 & spacing != 0 & bin != '120-140') %>%
+  filter(conc == 4 & spacing != 0 & spacing != 70 & bin != '120-140') %>%
   ggplot(aes(bin, ave_ratio_norm)) +
   facet_grid(background ~ .) +
   geom_jitter(aes(color = as.factor(spacing)), 
-              position=position_jitter(width=0.3, height=0), alpha = 0.75) +
-  geom_boxplot(outlier.shape=NA, size = 0.5, position = position_dodge(1),
+              position=position_jitter(width=0.3, height=0), alpha = 0.75,
+              size = 0.5) +
+  geom_boxplot(outlier.shape=NA, size = 0.3, position = position_dodge(1),
                show.legend = FALSE, alpha = 0) +
-  scale_color_manual(values = cbpalette5, name = 'spacing (bp)') +
+  scale_color_manual(values = cbPalette4, name = 'spacing (bp)') +
   theme(legend.position = 'top', axis.ticks.x = element_blank(), 
-        strip.background = element_rect(colour="black", fill="white")) + 
+        strip.background = element_rect(colour="black", fill="white"),
+        axis.text.x = element_text(angle = 45, hjust = 1)) + 
   scale_y_log10(limits = c(1,50)) +
   annotation_logticks(sides = 'l') +
   panel_border(colour = 'black') +
-  ylab('Average normalized\nexpression (a.u.)') +
+  ylab('Average normalized expression (a.u.)') +
   xlab('Distance along background (bp)')
 
 save_plot('plots/p_subpool3_dist_4_bin20bp_back.pdf', 
           p_subpool3_dist_4_bin20bp_back, scale = 1.3,
-          base_width = 4.5, base_height = 4.5)
+          base_width = 3.5, base_height = 3.5)
 
 #plot spacing effects
 
 p_subpool3_space_4_back <- s3_untidy %>%
   filter(conc == 4 & spacing != 0 & dist < 40) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   ggplot(aes(as.factor(spacing), ave_ratio_norm)) +
-  facet_grid(~ background) +
-  geom_boxplot(outlier.size = 1, outlier.alpha = 0.75, size = 0.5, 
-               position = position_dodge(1)) +
+  facet_grid(background ~ .) +
+  geom_boxplot(outlier.size = 1, size = 0.3, position = position_dodge(1)) +
   theme(axis.ticks.x = element_blank(), 
         strip.background = element_rect(colour="black", fill="white")) + 
   scale_y_log10() +
   panel_border(colour = 'black') +
   annotation_logticks(sides = 'l') +
-  ylab('Average normalized\nexpression (a.u.)') +
+  ylab('Average normalized expression (a.u.)') +
   xlab('Spacing (bp)')
 
 save_plot('plots/p_subpool3_space_4_back.pdf', p_subpool3_space_4_back,
-          scale = 1.3, base_width = 4.5, base_height = 2)
+          scale = 1.3, base_width = 2, base_height = 3.5)
 
 
 
