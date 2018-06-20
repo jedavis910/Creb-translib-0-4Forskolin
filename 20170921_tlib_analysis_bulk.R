@@ -274,10 +274,6 @@ rep_0_22_A_B <- var_conc_rep(RNA_DNA_0A, RNA_DNA_0B, RNA_DNA_2_5A, RNA_DNA_2_5B,
 
 #Normalize to background--------------------------------------------------------
 
-#Ideally would have put this earlier as there are so many columns to modify, but
-#normalizing to backgrounds excludes the controls, so I would have to repeat the
-#code for the controls...
-
 back_norm <- function(df1) {
   gsub_0_22 <- df1 %>%
     ungroup () %>%
@@ -340,6 +336,7 @@ back_norm <- function(df1) {
     mutate(ave_ratio_20_norm = (ratio_20A_norm + ratio_20B_norm)/2) %>%
     mutate(ave_ratio_22_norm = (ratio_22A_norm + ratio_22B_norm)/2) %>%
     mutate(induction = ave_ratio_22_norm/ave_ratio_0_norm)
+  return(back_join_norm)
 }
 
 trans_back_norm_rep_0_22 <- back_norm(rep_0_22_A_B)
@@ -564,40 +561,49 @@ p_subpool3_spa_back_norm <- s3_untidy %>%
 save_plot('plots/p_subpool3_spa_back_norm.pdf', p_subpool3_spa_back_norm,
           scale = 1.3, base_height = 4, base_width = 11)
 
-#just background v chr9 plot
-
-p_subpool3_spa_4_vchr9 <- s3_untidy %>%
-  filter(conc == 4 & background == 'v chr9' & (spacing == 5 | spacing == 15)) %>%
-  ggplot(aes(x = dist, y = ave_ratio_norm)) + 
-  geom_point(alpha = 0.5, size = 1.2, color = 'black') +
-  geom_smooth(color = 'black', span = 0.1, size = 0.4, se = FALSE) +
-  facet_grid(spacing ~ .) + 
-  ylab('Average normalized\nexpression (a.u.)') + 
-  panel_border(colour = 'black') +
-  scale_y_log10(limits = c(1, 15)) +
-  annotation_logticks(sides = 'l') +
-  background_grid(major = 'x', minor = 'none') +
-  scale_x_continuous("Distance along background (bp)", 
-    breaks = seq(from = 0, to = 150, by = 10)) +
-  theme(legend.position = 'right',
-        strip.background = element_rect(colour="black", fill="white"))
-
-save_plot('plots/p_subpool3_spa_4_vchr9.pdf', p_subpool3_spa_4_vchr9,
-          scale = 1.3, base_height = 3, base_width = 4.75)
-
 #v chr9 spacing overlay plots
+
+smooth_vchr9_5 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & dist < 60 & spacing == 5) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm)) +
+  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
+
+smooth_vchr9_5_df <- ggplot_build(smooth_vchr9_5)$data[[1]]
+
+smooth_vchr9_10 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & dist < 60 & spacing == 10) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm)) +
+  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
+
+smooth_vchr9_10_df <- ggplot_build(smooth_vchr9_10)$data[[1]]
+
+smooth_vchr9_15 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & dist < 60 & spacing == 15) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm)) +
+  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
+
+smooth_vchr9_15_df <- ggplot_build(smooth_vchr9_15)$data[[1]]
+
+smooth_vchr9_20 <- s3_untidy %>%
+  filter(conc == 4 & background == 'v chr9' & dist < 60 & spacing == 20) %>%
+  ggplot(aes(x = dist, y = ave_ratio_norm)) +
+  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
+
+smooth_vchr9_20_df <- ggplot_build(smooth_vchr9_20)$data[[1]]
 
 p_subpool3_spa_4_vchr9_5_10 <- s3_untidy %>%
   filter(conc == 4 & background == 'v chr9' & dist < 60 & (spacing == 5 | spacing == 10)) %>%
   ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_smooth(aes(fill = as.factor(spacing)), span = 0.15, size = 0.4, 
+              alpha = 0.2, se = TRUE) +
   geom_point(alpha = 0.5, size = 1.2) +
-  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
+  scale_fill_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average normalized\nexpression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = seq(from = 14, to = 24, by = 10), color = 'gray20', 
+  geom_vline(xintercept = seq(from = 14, to = 24.3, by = 10.3), color = 'gray20', 
              linetype = 2, alpha = 0.5) +
-  geom_vline(xintercept = seq(from = 18, to = 28, by = 10), 
+  geom_vline(xintercept = seq(from = 18.6, to = 27.9, by = 9.3), 
              color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
   scale_y_log10(limits = c(1, 13)) +
   annotation_logticks(sides = 'l') +
@@ -610,13 +616,16 @@ p_subpool3_spa_4_vchr9_5_10 <- s3_untidy %>%
 p_subpool3_spa_4_vchr9_5_15 <- s3_untidy %>%
   filter(conc == 4 & background == 'v chr9' & dist < 60 & (spacing == 5 | spacing == 15)) %>%
   ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_smooth(aes(fill = as.factor(spacing)), span = 0.15, size = 0.4, 
+              alpha = 0.2, se = TRUE) +
   geom_point(alpha = 0.5, size = 1.2) +
-  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
   scale_color_manual(values = c('gray20', 'firebrick3'), 
+                     name = 'spacing (bp)') +
+  scale_fill_manual(values = c('gray20', 'firebrick3'), 
                      name = 'spacing (bp)') +
   ylab('Average normalized\nexpression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = seq(from = 14, to = 24, by = 10), color = 'gray20', 
+  geom_vline(xintercept = seq(from = 14, to = 24.3, by = 10.3), color = 'gray20', 
              linetype = 2, alpha = 0.5) +
   scale_y_log10(limits = c(1, 13)) +
   annotation_logticks(sides = 'l') +
@@ -629,12 +638,16 @@ p_subpool3_spa_4_vchr9_5_15 <- s3_untidy %>%
 p_subpool3_spa_4_vchr9_10_20 <- s3_untidy %>%
   filter(conc == 4 & background == 'v chr9' & dist < 60 & (spacing == 10 | spacing == 20)) %>%
   ggplot(aes(x = dist, y = ave_ratio_norm, color = as.factor(spacing))) +
+  geom_smooth(aes(fill = as.factor(spacing)), span = 0.15, size = 0.4, 
+              alpha = 0.2, se = TRUE) +
   geom_point(alpha = 0.5, size = 1.2) +
-  geom_smooth(span = 0.2, size = 0.4, se = FALSE) +
-  scale_color_manual(values = c('dodgerblue3', '#55C667FF'), name = 'spacing (bp)') +
+  scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
+                     name = 'spacing (bp)') +
+  scale_fill_manual(values = c('dodgerblue3', '#55C667FF'),
+                     name = 'spacing (bp)') +
   ylab('Average normalized\nexpression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = seq(from = 18, to = 28, by = 10), 
+  geom_vline(xintercept = seq(from = 18.6, to = 27.9, by = 9.3), 
              color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
   scale_y_log10(limits = c(1, 13)) +
   annotation_logticks(sides = 'l') +
@@ -938,6 +951,25 @@ p_s5_single_site_exp <- s5_single_site_exp %>%
 save_plot('plots/p_s5_single_site_exp.pdf', p_s5_single_site_exp,
           scale = 1.3, base_height = 2, base_width = 4)
 
+#Look at effect of adding weak sites to response curves
+
+s5_binom <- s5_untidy %>%
+  mutate(ave_ratio_norm = log10(ave_ratio_norm)) %>%
+  mutate(ave_ratio_norm_max = max(ave_ratio_norm)) %>%
+  mutate(ave_ratio_norm = ave_ratio_norm/ave_ratio_norm_max)
+
+test <- s5_binom %>%
+  mutate(conc = conc + 0.005) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  filter(consensus > 1 & weak == 0) %>%
+  ggplot(aes(conc, ave_ratio_norm, color = as.factor(consensus))) +
+  facet_grid(background ~ .) +
+  scale_x_log10() +
+  annotation_logticks(sides = 'b') +
+  geom_point(alpha = 0.75) +
+  geom_smooth(alpha = 0.5, method = 'loess') +
+  scale_color_viridis(discrete = TRUE)
 
 #Induction analysis-------------------------------------------------------------
 
@@ -1280,46 +1312,70 @@ pred_resid <- function(df1, x) {
 #Including weak sites, all independent, independent background 
 
 ind_site_ind_back <- function(df) {
-  model <- lm(ave_ratio_norm ~ site1 + site2 + site3 + site4 + site5 + site6, 
+  model <- lm(ave_ratio_norm ~ site1 + site2 + site3 + site4 + site5 + site6 + background, 
               data = df)
 }
 
 subpool5_ncw <- s5_untidy %>%
-  filter(conc == 4 & background == 's pGl4') %>%
+  filter(conc == 4 & ave_ratio_norm >= 2) %>%
   mutate(site1 = gsub('nosite', 'anosite', site1)) %>%
   mutate(site2 = gsub('nosite', 'anosite', site2)) %>%
   mutate(site3 = gsub('nosite', 'anosite', site3)) %>%
   mutate(site4 = gsub('nosite', 'anosite', site4)) %>%
   mutate(site5 = gsub('nosite', 'anosite', site5)) %>%
   mutate(site6 = gsub('nosite', 'anosite', site6)) %>%
+  mutate(background = gsub('v chr9', 'av chr9', background)) %>%
   var_log10()
 
 ind_site_ind_back_fit <- ind_site_ind_back(subpool5_ncw)
-ind_site_ind_back_sum <- tidy(ind_site_ind_back_fit) %>%
-  filter(str_detect(term, '^site')) %>%
-  mutate(term = gsub('consensus', '_consensus', term)) %>%
-  mutate(term = gsub('weak', '_weak', term)) %>%
-  separate(term, into = c('site', 'type'), sep = "_")
+ind_site_ind_back_sumtidy <- function(df) {
+  df <- tidy(df)
+  sites <- df %>%
+    filter(str_detect(term, '^site')) %>%
+    mutate(term = gsub('consensus', '_consensus', term)) %>%
+    mutate(term = gsub('weak', '_weak', term)) %>%
+    separate(term, into = c('variable', 'type'), sep = "_")
+  background <- df %>%
+    mutate(term = gsub('\\(Intercept\\)', 'backgroundv chr9', term)) %>%
+    filter(str_detect(term, '^background')) %>%
+    mutate(term = gsub('background', 'background_', term)) %>%
+    separate(term, into = c('variable', 'type'), sep = '_')
+  sum <- rbind(sites, background)
+  return(sum)
+}
+  
+ind_site_ind_back_sum <- ind_site_ind_back_sumtidy(ind_site_ind_back_fit)
 
 ind_site_ind_back_anova <- tidy(anova(ind_site_ind_back_fit)) %>%
   mutate(term_fctr = factor(term, levels = term))
+
 ind_site_ind_back_p_r <- pred_resid(subpool5_ncw, ind_site_ind_back_fit)
 
 p_ind_site_ind_back <- ggplot(ind_site_ind_back_p_r, 
-                              aes(ave_ratio_norm, pred, fill = consensus)) +
-  geom_point(shape = 21, alpha = 0.5) +
-  scale_fill_viridis() +
-  xlab('Measured expression') + ylab('Predicted expression') +
-  annotate("text", x = 0.5, y = 2, 
+                              aes(ave_ratio_norm, pred, 
+                                  fill = as.factor(consensus))) +
+  geom_point(shape = 21, alpha = 0.6, color = 'grey20', stroke = 0.3,
+             size = 2) +
+  scale_fill_viridis(discrete = TRUE, name = 'consensus CREs') +
+  geom_abline(slope = 1) +
+  scale_x_continuous(name = 'log10 measured expression',
+                     breaks = c(1, 2)) + 
+  scale_y_continuous(name = 'log10 predicted expression',
+                     breaks = c(1, 2)) +
+  annotation_logticks(sides = 'bl') +
+  annotate("text", x = 0.75, y = 2, 
            label = paste('r =', 
                          round(cor(ind_site_ind_back_p_r$pred,
                                    ind_site_ind_back_p_r$ave_ratio_norm,
                                    use = "pairwise.complete.obs", 
                                    method = "pearson"), 2)))
 
-p_ind_site_ind_back_sum <- ggplot(ind_site_ind_back_sum, 
-                                  aes(site, estimate, fill = type)) + 
-  geom_bar(stat = 'identity', position = 'dodge') + 
+p_ind_site_ind_back_sum <- ind_site_ind_back_sum %>%
+  mutate(type = factor(type, 
+                             levels = c('consensus', 'v chr9', 's pGl4', 
+                                        'v chr5', 'weak'))) %>%
+  ggplot(aes(variable, estimate, fill = type)) + 
+  geom_bar(stat = 'identity', position = 'dodge', color = 'grey50') + 
   scale_x_discrete(position = 'bottom') + 
   scale_fill_viridis(discrete = TRUE) + 
   theme(axis.ticks.x = element_blank()) +
@@ -1333,16 +1389,13 @@ p_ind_site_ind_back_anova <- ind_site_ind_back_anova %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1), 
         axis.ticks.x = element_blank())
 
-save_plot('plots/p_ind_site_ind_back_anova.png', p_ind_site_ind_back_anova,
-          scale = 1.3)
-
 p_ind_sit_ind_back_grid <- plot_grid(p_ind_site_ind_back, 
                                      p_ind_site_ind_back_sum, 
                                      p_ind_site_ind_back_anova,
                                      nrow = 3)
 
 save_plot('plots/p_ind_sit_ind_back_grid.png', p_ind_sit_ind_back_grid,
-          scale = 1.3, base_width = 5, base_height = 8)
+          scale = 1.3, base_width = 5.25, base_height = 8)
 
 
 #replicate plots----------------------------------------------------------------
@@ -2166,9 +2219,6 @@ ggplot(filter(clust_s5_bn_conc_rep_0_22, cluster == 5 | cluster == 7),
 
 #Titration Plots----------------------------------------------------------------
 
-#Performing this on averaged data first, can go back and use both replicates to 
-#fit later
-
 #Subtract ave expression at 0 µM from each variant's ave expression
 
 trans_back_0_norm_conc <- trans_back_norm_pc_spGl4 %>%
@@ -2208,61 +2258,6 @@ p_titr_pc_back <- ggplot(trans_back_0_norm_conc, aes(conc, ave_ratio_norm)) +
 
 save_plot('plots/p_titr_pc_back.pdf', p_titr_pc_back, scale = 1.3, 
           base_width = 3.75, base_height = 2.5)
-
-
-#michaelis model
-
-m_m_model <- function(df) {
-  conc_half_max_init <- (2^-3)
-  max_ave_ratio_norm_init <- 0.5
-  m_m_nls <- nls(
-    ave_ratio_norm ~ (max_ave_ratio_norm * conc)/(conc_half_max + conc),
-    data = df, start = c(conc_half_max = conc_half_max_init, 
-                         max_ave_ratio_norm = max_ave_ratio_norm_init))
-  return(m_m_nls)
-}
-
-pred_resid <- function(df1, x) {
-  df2 <- df1 %>%
-    add_predictions(x)
-  df3 <- df2 %>%
-    add_residuals(x)
-  return(df3)
-  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
-}
-
-
-#Fitting single variant
-
-trans_back_0_norm_conc_sample1 <- trans_back_0_norm_conc %>%
-  filter(subpool == 'subpool5') %>%
-  select(-ave_barcode) %>%
-  group_by(subpool, name, most_common, background) %>%
-  nest() %>%
-  sample_n(1) %>%
-  unnest()
-
-ggplot(trans_back_0_norm_conc_sample1, 
-       aes(conc, ave_ratio_norm, color = name)) +
-  geom_point(show.legend = FALSE) +
-  geom_line() +
-  xlab('Forskolin µM') +
-  ylab('Average background-normalized\nsum RNA/DNA')
-
-m_m_fit <- m_m_model(trans_back_0_norm_conc_sample1)
-summary(m_m_fit)
-
-m_m_fit_nlslm <- m_m_model_nlslm(trans_back_0_norm_conc_sample1)
-summary(m_m_fit_nlslm)
-
-m_m_p_r <- pred_resid(trans_back_0_norm_conc_sample1, m_m_fit) %>%
-  ggplot(aes(x = conc)) +
-  geom_point(aes(y = ave_ratio_norm), color = 'black') +
-  geom_line(aes(y = ave_ratio_norm), color = 'black') +
-  geom_point(aes(y = pred), color = 'red') +
-  geom_line(aes(y = pred), color = 'red', linetype = 2) +
-  xlab('Forskolin µM') +
-  ylab('Average background-normalized\nsum RNA/DNA')
 
 
 #Fitting nested data
@@ -2389,6 +2384,29 @@ p_n_rse_hist <- m_m_EC50_n_p_r %>%
 save_plot('plots/p_n_rse_hist.pdf', p_n_rse_hist, scale = 1.3, base_height = 2,
           base_width = 2.5)
 
+
+#Figure 2-----------------------------------------------------------------------
+
+#plot concentration vs. expression of variants that were fit for site number
+#analysis in figure 2
+
+test <- m_m_EC50_n_p_r %>%
+  mutate(conc = conc + 0.005) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  filter(consensus > 1 & weak == 0) %>%
+  ggplot(aes(conc, ave_ratio_norm, color = as.factor(consensus))) +
+  facet_grid(background ~ .) +
+  scale_x_log10(name = 'µM forskolin') +
+  scale_y_log10(name = 'Average normalized\n expression (a.u.)') +
+  annotation_logticks(sides = 'bl') +
+  geom_point(alpha = 0.75, size = 1) +
+  geom_smooth(alpha = 0.5, method = 'loess') +
+  scale_color_viridis(discrete = TRUE, name = 'Consensus CREs') +
+  panel_border(colour = 'black') +
+  theme(strip.background = element_rect(colour="black", fill="white"))
+
+
 #plot coefficients (n and EC50) and their relationship to architectures
 
 p_n_consensus <- hill_EC50 %>%
@@ -2447,6 +2465,23 @@ p_n_consensus_weak <- hill_EC50 %>%
 
 save_plot('plots/p_n_consensus_weak.pdf', p_n_consensus_weak, scale = 1.3, 
           base_width = 3.25, base_height = 2)
+
+test <- hill_EC50 %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  filter(consensus == 3 & conc == 4 & site3 == 'consensus' & site5 == 'consensus') %>%
+  ggplot(aes(as.factor(weak), n)) +
+  facet_wrap(~ background) +
+  geom_jitter(size = 1, color = 'dodgerblue2',
+              position=position_jitter(width=0.3, height=0)) +
+  geom_boxplot(outlier.shape=NA, alpha = 0, outlier.size = 0.5, size = 0.5, 
+               outlier.alpha = 0.5) +
+  scale_fill_manual(values = cbPalette7_grad_light, name = 'weak sites') +
+  xlab('weak sites') +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+
 
 p_s5_num_cons_back_EC50 <- hill_EC50 %>%
   mutate(background = factor(background, 
