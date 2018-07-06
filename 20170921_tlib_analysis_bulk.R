@@ -442,46 +442,59 @@ med_rep_0_22_A_B <- var_conc_rep_med(med_ratio_R0A, med_ratio_R0B,
 
 log10_med_rep_0_22_A_B <- var_log10(med_rep_0_22_A_B)
 
+ggplot(med_rep_0_22_A_B, aes(med_ratio_22A, med_ratio_22B)) +
+  geom_point(alpha = 0.1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  annotation_logticks(sides = 'bl')
+
 
 #Plot median vs. sum for uninduced and induced
 
-p_med_trans_0 <- med_rep_0_22_A_B %>%
-  ggplot(aes(med_ratio_0A, med_ratio_0B)) +
-  geom_point(alpha = 0.1, size = 0.75) +
-  geom_point(data = filter(med_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             fill = 'orange', shape = 21, size = 1.5) + 
-  geom_point(data = filter(med_rep_0_22_A_B, 
-                           name == 'pGL4.29 Promega 1-63 + 1-87'), 
-             fill = 'red', shape = 21, size = 1.5) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10() +
-  scale_y_log10()
+med_sum_join <- function(sum, med) {
+  sum_select <- sum %>%
+    select(name, ratio_22A, ratio_22B)
+  med_select <- med %>%
+    select(name, med_ratio_22A, med_ratio_22B)
+  sum_med <- inner_join(sum_select, med_select, by = 'name') %>%
+    select(-name)
+  return(sum_med)
+}
 
-save_plot('plots/p_med_trans_0.pdf', p_med_trans_0, scale = 1.3)
+med_vs_sum <- med_sum_join(rep_0_22_A_B, med_rep_0_22_A_B) %>%
+  var_log10()
 
-p_med_trans_22 <- med_rep_0_22_A_B %>%
-  ggplot(aes(med_ratio_22A, med_ratio_22B)) +
-  geom_point(alpha = 0.1, size = 0.75) +
-  geom_point(data = filter(med_rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             fill = 'orange', shape = 21, size = 1.5) + 
-  geom_point(data = filter(med_rep_0_22_A_B, 
-                           name == 'pGL4.29 Promega 1-63 + 1-87'), 
-             fill = 'red', shape = 21, size = 1.5) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10() +
-  scale_y_log10()
+p_ave_med_vs_sum <- med_vs_sum %>%
+  mutate(ave_sum = (ratio_22A + ratio_22B)/2) %>%
+  mutate(ave_med = (med_ratio_22A + med_ratio_22B)/2) %>%
+  ggplot(aes(ave_sum, ave_med)) +
+  geom_point(alpha = 0.1)
 
-save_plot('plots/p_med_trans_22.pdf', p_med_trans_22, scale = 1.3)
+my_points <- function(data, mapping, ...) {
+  ggplot(data = data, mapping = mapping) +
+    geom_point(alpha = 0.1, size = 0.75) +
+    scale_x_continuous(limits = c(-1.5, 1.5), breaks = c(-1:1)) + 
+    scale_y_continuous(limits = c(-1.5, 1.5), breaks = c(-1:1)) +
+    annotation_logticks(sides = 'bl')
+}
+
+my_density <- function(data, mapping, ...) {
+  ggplot(data = data, mapping = mapping) +
+    geom_density(kernel = 'gaussian') +
+    scale_x_continuous(limits = c(-1.5, 1.5), breaks = c(-3:1)) +
+    scale_y_continuous(limits = c(-0.1, 4.5)) +
+    annotation_logticks(sides = 'b')
+}
+
+p_med_vs_sum <- ggpairs(med_vs_sum, 
+                        columnLabels = c('Sum Exp.\nRep. 1', 'Sum Exp.\nRep. 2',
+                                         'Med Exp.\nRep. 1', 'Med Exp.\nRep. 2'),
+                        lower = list(continuous = my_points),
+                        diag = list(continuous = my_density)) +
+  panel_border() + 
+  theme(panel.grid.major = element_blank())
+
+save_plot('plots/p_med_vs_sum_0.pdf', p_med_vs_sum, scale = 1.5)
   
 
 
@@ -643,10 +656,9 @@ trans_back_norm_pc_spGl4_conc <- var_conc_exp(trans_back_norm_pc_spGl4)
 #70 bp (all but 0 appear as -4 bp spacing). Each site distance combination is 
 #then moved along the backgrounds at 1 bp increments starting from closest to 
 #the minP. Separation lists the spacing between sites and distance (start of 
-#consensus and flanks). Added 2 to all distances to measure to start of BS and 
-#not to flank. Added 4 to all spacing but 0 to measure difference between start 
-#of sites. Also took average of log2 med BC expression between biological 
-#replicates for plotting
+#consensus and flanks). Added 2 to all distances to measure end of background to
+#start of BS and then added 64 to measure to minimal promoter. Added 4 to all 
+#spacing but 0 to measure difference between start of sites
 
 subpool3 <- function(df) {
   df <- df %>%
@@ -659,13 +671,13 @@ subpool3 <- function(df) {
              into = c("subpool", "spacing", "fluff2", "fluff3", "dist", "fluff4"),
              sep = "_", convert = TRUE) %>%
     select(-subpool, -fluff2, -fluff3, -fluff4) %>%
-    mutate(dist = as.integer(dist + 2)) %>%
+    mutate(dist = as.integer(dist + 2 + 64)) %>%
     mutate(spacing = 
              ifelse(spacing != as.integer(0), 
                     as.integer(spacing + 4), as.integer(spacing)))
 }
 
-s3_tidy <- subpool3(trans_back_norm_rep_0_22)
+s3_tidy <- subpool3(rep_0_22_A_B)
 s3_untidy <- subpool3(trans_back_norm_conc)
   
 
@@ -933,15 +945,15 @@ save_plot('plots/p_subpool3_spa_4_spgl4_10_20.pdf',
 
 #plot distance effects
 
-s3_untidy_bin20bp <- s3_untidy %>%
-  mutate(bin = cut(dist, seq(from = 0, to = 140, by = 20),
+s3_tidy_bin20bp <- s3_tidy %>%
+  mutate(bin = cut(dist, seq(from = 60, to = 200, by = 20),
                    labels = c('0-20', '20-40', '40-60', '60-80',
                               '80-100', '100-120', '120-140')))
 
-p_subpool3_dist_4_bin20bp_back <- s3_untidy_bin20bp %>%
+p_subpool3_dist_4_bin20bp_back <- s3_tidy_bin20bp %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  filter(conc == 4 & spacing != 0 & spacing != 70 & bin != '120-140') %>%
+  filter(spacing != 0 & spacing != 70) %>%
   ggplot(aes(bin, ave_ratio_norm)) +
   facet_grid(background ~ .) +
   geom_jitter(aes(color = as.factor(spacing)), 
@@ -1851,14 +1863,45 @@ p_space_dist_int_trans <- s3_int_trans %>%
   panel_border(colour = 'black') +
   scale_y_log10() +
   annotation_logticks(sides = 'l') +
-  background_grid(major = 'x', minor = 'none') +
-  scale_x_continuous("Distance along background (bp)", 
-                     breaks = seq(from = 0, to = 150, by = 10)) +
+  background_grid(major = 'x', minor = 'x', colour.major = 'grey90',
+                  colour.minor = 'grey95') +
+  scale_x_continuous("Distance to minimal promoter (bp)", 
+                     breaks = seq(from = 70, to = 190, by = 20)) +
   theme(legend.position = 'right',
         strip.background = element_rect(colour="black", fill="white"))
 
 ggsave('plots/p_space_dist_int_trans.pdf', p_space_dist_int_trans, 
-          scale = 1.3, width = 8.5, height = 5, units = 'in')
+          scale = 1.3, width = 8.5, height = 6.5, units = 'in')
+
+
+#distance effects in episomal and integrated
+
+s3_int_trans_bin20bp <- s3_int_trans %>%
+  mutate(bin = cut(dist, seq(from = 64, to = 196, by = 22),
+                   labels = c('64-86', '86-108', '108-130', '130-152',
+                              '152-174', '174-196')))
+
+p_s3_dist_int_trans_bin20bp <- s3_int_trans_bin20bp %>%
+  mutate(background = factor(background, 
+                             levels = c('s pGl4', 'v chr5'))) %>%
+  filter(spacing != 0 & spacing != 70 & background != 'v chr9' & bin != '174-196') %>%
+  ggplot(aes(bin, ave_ratio)) +
+  facet_grid(MPRA ~ background, scales = 'free') +
+  geom_jitter(aes(color = as.factor(spacing)), 
+              position=position_jitter(width=0.3, height=0), alpha = 0.75,
+              size = 0.5) +
+  geom_boxplot(outlier.shape=NA, size = 0.3, position = position_dodge(1),
+               show.legend = FALSE, alpha = 0) +
+  scale_color_manual(values = cbPalette4, name = 'spacing (bp)') +
+  theme(legend.position = 'top', axis.ticks.x = element_blank(), 
+        strip.background = element_rect(colour="black", fill="white"),
+        axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_y_log10() +
+  annotation_logticks(sides = 'l') +
+  panel_border(colour = 'black') +
+  ylab('Average expression (a.u.)') +
+  xlab('Distance to minimal promoter (bp)')
+
 
 #Analysis on periodicity in integrated subpool3 is difficult with noise
 
