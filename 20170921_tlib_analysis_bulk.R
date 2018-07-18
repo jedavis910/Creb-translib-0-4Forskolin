@@ -696,7 +696,10 @@ s3_untidy <- subpool3(trans_back_norm_conc)
 #Subpool 5 contains 6 equally spaced sites spaced 13 bp apart and starting from 
 #furthest to the minP. These sites are filled with sites of either the consensus
 #site, a weak site or no site. Both the weak and consensus sites are flanked by 
-#the same flanking sequence. 
+#the same flanking sequence. It's too complicated now to rename these sites 
+#instead of the 1 -> 6 system and instead with actual distance to the minimal 
+#promoter (site 1, 2, 3, 4, 5, 6 equate to -191, -166, -141, -116, -91 and -66 
+#respectively)
 
 subpool5 <- function(df) {
   df <- df %>%
@@ -734,7 +737,7 @@ subpool5 <- function(df) {
                     'weak', site_combo)) %>%
     mutate(site_combo = 
              ifelse(consensus == 0 & weak == 0, 
-                    'none', site_combo))
+                    'none', site_combo)) 
 }
 
 s5_tidy <- rep_0_22_A_B %>%
@@ -1410,108 +1413,6 @@ save_plot('plots/BC_per_variant.png',
           p_BC_per_variant, scale = 2.8)
 
 
-#Fitting a model to the 6-site library------------------------------------------
-
-pred_resid <- function(df1, x) {
-  df2 <- df1 %>%
-    add_predictions(x)
-  df3 <- df2 %>%
-    add_residuals(x)
-  return(df3)
-  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
-}
-
-#Linear models
-
-#Including weak sites, all independent, independent background 
-
-ind_site_ind_back <- function(df) {
-  model <- lm(ave_ratio_norm ~ site1 + site2 + site3 + site4 + site5 + site6 + background, 
-              data = df)
-}
-
-subpool5_ncw <- s5_untidy %>%
-  filter(conc == 4 & ave_ratio_norm >= 2) %>%
-  mutate(site1 = gsub('nosite', 'anosite', site1)) %>%
-  mutate(site2 = gsub('nosite', 'anosite', site2)) %>%
-  mutate(site3 = gsub('nosite', 'anosite', site3)) %>%
-  mutate(site4 = gsub('nosite', 'anosite', site4)) %>%
-  mutate(site5 = gsub('nosite', 'anosite', site5)) %>%
-  mutate(site6 = gsub('nosite', 'anosite', site6)) %>%
-  mutate(background = gsub('v chr9', 'av chr9', background)) %>%
-  var_log10()
-
-ind_site_ind_back_fit <- ind_site_ind_back(subpool5_ncw)
-ind_site_ind_back_sumtidy <- function(df) {
-  df <- tidy(df)
-  sites <- df %>%
-    filter(str_detect(term, '^site')) %>%
-    mutate(term = gsub('consensus', '_consensus', term)) %>%
-    mutate(term = gsub('weak', '_weak', term)) %>%
-    separate(term, into = c('variable', 'type'), sep = "_")
-  background <- df %>%
-    mutate(term = gsub('\\(Intercept\\)', 'backgroundv chr9', term)) %>%
-    filter(str_detect(term, '^background')) %>%
-    mutate(term = gsub('background', 'background_', term)) %>%
-    separate(term, into = c('variable', 'type'), sep = '_')
-  sum <- rbind(sites, background)
-  return(sum)
-}
-  
-ind_site_ind_back_sum <- ind_site_ind_back_sumtidy(ind_site_ind_back_fit)
-
-ind_site_ind_back_anova <- tidy(anova(ind_site_ind_back_fit)) %>%
-  mutate(term_fctr = factor(term, levels = term))
-
-ind_site_ind_back_p_r <- pred_resid(subpool5_ncw, ind_site_ind_back_fit)
-
-p_ind_site_ind_back <- ggplot(ind_site_ind_back_p_r, 
-                              aes(ave_ratio_norm, pred, 
-                                  fill = as.factor(consensus))) +
-  geom_point(shape = 21, alpha = 0.6, color = 'grey20', stroke = 0.3,
-             size = 2) +
-  scale_fill_viridis(discrete = TRUE, name = 'consensus CREs') +
-  geom_abline(slope = 1) +
-  scale_x_continuous(name = 'log10 measured expression',
-                     breaks = c(1, 2)) + 
-  scale_y_continuous(name = 'log10 predicted expression',
-                     breaks = c(1, 2)) +
-  annotation_logticks(sides = 'bl') +
-  annotate("text", x = 0.75, y = 2, 
-           label = paste('r =', 
-                         round(cor(ind_site_ind_back_p_r$pred,
-                                   ind_site_ind_back_p_r$ave_ratio_norm,
-                                   use = "pairwise.complete.obs", 
-                                   method = "pearson"), 2)))
-
-p_ind_site_ind_back_sum <- ind_site_ind_back_sum %>%
-  mutate(type = factor(type, 
-                             levels = c('consensus', 'v chr9', 's pGl4', 
-                                        'v chr5', 'weak'))) %>%
-  ggplot(aes(variable, estimate, fill = type)) + 
-  geom_bar(stat = 'identity', position = 'dodge', color = 'grey50') + 
-  scale_x_discrete(position = 'bottom') + 
-  scale_fill_viridis(discrete = TRUE) + 
-  theme(axis.ticks.x = element_blank()) +
-  ylab('Weight')
-
-p_ind_site_ind_back_anova <- ind_site_ind_back_anova %>%
-  ggplot(aes(term_fctr, sumsq)) + 
-  geom_bar(stat = 'identity') + 
-  ylab('Sum of squares') +
-  xlab('Model term') + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
-        axis.ticks.x = element_blank())
-
-p_ind_sit_ind_back_grid <- plot_grid(p_ind_site_ind_back, 
-                                     p_ind_site_ind_back_sum, 
-                                     p_ind_site_ind_back_anova,
-                                     nrow = 3)
-
-save_plot('plots/p_ind_sit_ind_back_grid.png', p_ind_sit_ind_back_grid,
-          scale = 1.3, base_width = 5.25, base_height = 8)
-
-
 #replicate plots----------------------------------------------------------------
 
 #plot replicates for summed variant expression at 4 µM for fig. 1
@@ -1730,7 +1631,7 @@ int_trans_pearsons <- tibble(
 
 write_csv(int_trans_pearsons, 'int_trans_pearsons.csv')
 
-#Comparison for subpool3
+#Comparison of subpool3 between integrated and episomal-------------------------
 
 p_int_trans_ave_med_rep_sp3 <- int_trans %>%
   filter(subpool == 'subpool3') %>%
@@ -2114,7 +2015,7 @@ ggsave('plots/p_subpool3_spa_vchr5_int_10_20.pdf', p_subpool3_spa_vchr5_int_10_2
        scale = 1.3, height = 1.4, width = 6.5, units = 'in')
 
 
-#Comparison for subpool5
+#Comparison of subpool5 between integrated and episomal-------------------------
 
 p_int_trans_ave_med_rep_sp5 <- int_trans %>%
   filter(subpool == 'subpool5') %>%
@@ -2130,97 +2031,287 @@ ggsave('plots/p_int_trans_ave_med_rep_sp5.pdf', p_int_trans_ave_med_rep_sp5,
        scale = 1.3, width = 3, height = 2.7, units = 'in')
 
 
-#Compare subpool3 features between integrated and transient
+#Compare subpool5 features between integrated and transient
 
 s5_int_trans <- MPRA_ave %>%
   filter(subpool == 'subpool5') %>%
   subpool5()
 
-
-#consensus vs. expression
-
-p_subpool5_cons_int_trans <- s5_int_trans %>%
-  filter(weak == 0) %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(as.factor(consensus), ave_ratio, fill = as.factor(MPRA))) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) + 
-  scale_fill_manual(values = forskolin2, name = 'forskolin') +
-  facet_grid(~ background) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  panel_border(colour = 'black') +
-  scale_y_log10() +
-  annotation_logticks(sides = 'l') +
-  ylab('Average expression (a.u.)') +
-  xlab('Consensus sites')
-
-
-
-
-
-
-p_weak_cons_int_trans <- s5_int_trans_norm %>%
-  filter(background == 's pGl4' & MPRA == 'integrated') %>%
-  ggplot(aes(as.factor(consensus), ave_ratio_norm, fill = as.factor(weak))) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) +
-  panel_border(colour = 'black') +
-  scale_y_log10() +
-  annotation_logticks(sides = 'l') +
-  background_grid(major = 'y', minor = 'none') +
-  scale_fill_manual(name = 'number of\nweak sites', 
-                    values = cbPalette7_grad_light) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  ylab('Average normalized\nexpression (a.u.)') +
-  xlab('Number of consensus sites')
-
-save_plot('plots/p_weak_cons_int_trans.pdf', p_weak_cons_int_trans,
-          scale = 1.3, base_height = 2.25, base_width = 5.25)
-
-#Show effect of adding weak sites to consensus sites per MPRA
-
-med_weak_over_med_cons <- function(df) {
-  med_cons <- df %>%
-    filter(weak == 0) %>%
-    group_by(background, consensus, MPRA) %>%
-    summarize(cons_med = median(ave_ratio_norm)) %>%
-    ungroup()
-  norm_cons <- df %>%
-    left_join(med_cons, by = c('background', 'consensus', 'MPRA')) %>%
-    mutate(ratio_norm_over_med_cons = ave_ratio_norm/cons_med) %>%
-    ungroup()
-  return(norm_cons)
+pred_resid <- function(df1, x) {
+  df2 <- df1 %>%
+    add_predictions(x)
+  df3 <- df2 %>%
+    add_residuals(x)
+  return(df3)
+  print('processed pre_res_trans_int(df1, df2) in order of (data, model)')
 }
 
-p_med_weak_over_med_cons_int_trans <- s5_int_trans_norm %>%
-  med_weak_over_med_cons() %>%
-  filter(weak > 0 & background == 's pGl4') %>%
-  ggplot(aes(as.factor(consensus), ratio_norm_over_med_cons, 
-             fill = as.factor(weak))) +
-  facet_grid(MPRA ~ .) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) +
-  panel_border(colour = 'black') +
-  scale_fill_manual(name = 'number of\nweak sites', 
-                    values = cbPalette6_grad_light) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  geom_hline(yintercept = 1, alpha = 0.25, linetype = 2) +
-  geom_vline(xintercept = c(1.5:5.5), alpha = 0.25) +
-  ylab('Expression change with weak CRE\naddition to n consensus sites (a.u.)') +
-  xlab('Number of consensus sites')
 
-save_plot('plots/p_med_weak_over_med_cons_int_trans.pdf', 
-          p_med_weak_over_med_cons_int_trans, scale = 1.3, base_width = 5.25, 
-          base_height = 3.75)
+#Consensus and weak vs. expression
+
+p_s5_num_cons_num_weak_epi_int_spgl4 <- s5_int_trans %>%
+  filter(background == 's pGl4') %>%
+  ggplot(aes(as.factor(consensus), ave_ratio)) +
+  facet_grid(MPRA ~ ., scale = 'free') +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 1, 
+               position = position_dodge(0.75), show.legend = FALSE) +
+  scale_y_log10() + 
+  panel_border(colour = 'black') +
+  annotation_logticks(sides = 'l') +
+  scale_fill_manual(name = 'number of\nweak sites', 
+                    values = cbPalette7_grad_light) +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  ylab('Average expression (a.u.)') +
+  xlab('Consensus CREs')
+
+ggsave('plots/p_s5_num_cons_num_weak_epi_int_spgl4.pdf', 
+       p_s5_num_cons_num_weak_epi_int_spgl4,
+       scale = 1.3, width = 5, height = 3.25, units = 'in')
+
+p_s5_num_cons_num_weak_epi_int_vchr9 <- s5_int_trans %>%
+  filter(background == 'v chr9') %>%
+  ggplot(aes(as.factor(consensus), ave_ratio)) +
+  facet_grid(MPRA ~ ., scale = 'free') +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 1, 
+               position = position_dodge(0.75), show.legend = FALSE) +
+  scale_y_log10() + 
+  panel_border(colour = 'black') +
+  annotation_logticks(sides = 'l') +
+  scale_fill_manual(name = 'number of\nweak sites', 
+                    values = cbPalette7_grad_light) +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  ylab('Average expression (a.u.)') +
+  xlab('Consensus CREs')
+
+ggsave('plots/p_s5_num_cons_num_weak_epi_int_vchr9.pdf', 
+       p_s5_num_cons_num_weak_epi_int_vchr9,
+       scale = 1.3, width = 5, height = 3.25, units = 'in')
+
+p_s5_num_cons_num_weak_epi_int_vchr5 <- s5_int_trans %>%
+  filter(background == 'v chr5') %>%
+  ggplot(aes(as.factor(consensus), ave_ratio)) +
+  facet_grid(MPRA ~ ., scale = 'free') +
+  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 1, 
+               position = position_dodge(0.75), show.legend = FALSE) +
+  scale_y_log10() + 
+  panel_border(colour = 'black') +
+  annotation_logticks(sides = 'l') +
+  scale_fill_manual(name = 'number of\nweak sites', 
+                    values = cbPalette7_grad_light) +
+  theme(axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white")) +
+  ylab('Average expression (a.u.)') +
+  xlab('Consensus CREs')
+
+ggsave('plots/p_s5_num_cons_num_weak_epi_int_vchr5.pdf', 
+       p_s5_num_cons_num_weak_epi_int_vchr5,
+       scale = 1.3, width = 5, height = 3.25, units = 'in')
+
+
+#Linear models
+
+#Including weak sites, all independent, independent background 
+
+ind_site_ind_back <- function(df) {
+  model <- lm(ave_ratio ~ background + site1 + site2 + site3 + site4 + site5 + site6, 
+              data = df)
+}
+
+ind_site_ind_back_sumtidy <- function(df) {
+  df <- tidy(df)
+  sites <- df %>%
+    filter(str_detect(term, '^site')) %>%
+    mutate(term = gsub('consensus', '_consensus', term)) %>%
+    mutate(term = gsub('weak', '_weak', term)) %>%
+    separate(term, into = c('variable', 'type'), sep = "_")
+  background <- df %>%
+    mutate(term = gsub('\\(Intercept\\)', 'backgroundv chr9', term)) %>%
+    filter(str_detect(term, '^background')) %>%
+    mutate(term = gsub('background', 'background_', term)) %>%
+    separate(term, into = c('variable', 'type'), sep = '_')
+  sum <- rbind(sites, background)
+  return(sum)
+}
+
+subpool5_ncw <- s5_int_trans %>%
+  mutate(site1 = gsub('nosite', 'anosite', site1)) %>%
+  mutate(site2 = gsub('nosite', 'anosite', site2)) %>%
+  mutate(site3 = gsub('nosite', 'anosite', site3)) %>%
+  mutate(site4 = gsub('nosite', 'anosite', site4)) %>%
+  mutate(site5 = gsub('nosite', 'anosite', site5)) %>%
+  mutate(site6 = gsub('nosite', 'anosite', site6)) %>%
+  mutate(background = gsub('v chr9', 'av chr9', background)) %>%
+  var_log10()
+
+ind_site_ind_back_epi <- subpool5_ncw %>%
+  filter(MPRA == 'episomal') %>%
+  ind_site_ind_back()
+
+ind_site_ind_back_sum_epi <- ind_site_ind_back_sumtidy(ind_site_ind_back_epi)
+
+ind_site_ind_back_anova_epi <- tidy(anova(ind_site_ind_back_epi)) %>%
+  mutate(term_fctr = factor(term, levels = term)) %>%
+  mutate(total_sumsq = sum(sumsq)) %>%
+  mutate(per_sumsq = sumsq/total_sumsq)
+
+ind_site_ind_back_p_r_epi <- pred_resid(filter(subpool5_ncw, MPRA == 'episomal'), 
+                                    ind_site_ind_back_epi)
+
+p_ind_site_ind_back_epi <- ggplot(ind_site_ind_back_p_r_epi, 
+                              aes(ave_ratio, pred)) +
+  geom_point(alpha = 0.2, size = 1) +
+  scale_x_continuous(name = 'Measured expression', breaks = c(-1:1),
+                     limits = c(-1.5, 1.8)) + 
+  scale_y_continuous(name = 'Predicted expression', breaks = c(-1:1),
+                     limits = c(-1.5, 1.8)) +
+  annotation_logticks(sides = 'bl') +
+  annotate("text", x = -0.5, y = 1, 
+           label = paste('r =', 
+                         round(cor(ind_site_ind_back_p_r_epi$pred,
+                                   ind_site_ind_back_p_r_epi$ave_ratio,
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
+
+p_ind_site_ind_back_sum_epi <- ind_site_ind_back_sum_epi %>%
+  mutate(type = factor(type, 
+                       levels = c('v chr9', 's pGl4', 'v chr5', 'consensus', 
+                                  'weak'))) %>%
+  ggplot(aes(variable, estimate, fill = type)) + 
+  geom_bar(stat = 'identity', position = 'dodge', color = 'gray60', 
+           size = 0.3) + 
+  geom_hline(yintercept = 0, size = 0.25) +
+  scale_x_discrete(position = 'bottom') + 
+  scale_fill_viridis(discrete = TRUE) + 
+  theme(axis.ticks.x = element_blank(), legend.position = 'top',
+        axis.text.x = element_text(angle = 45, hjust = 1), 
+        axis.title.x = element_blank()) +
+  ylab('Weight')
+
+p_ind_site_ind_back_anova_epi <- ind_site_ind_back_anova_epi %>%
+  ggplot(aes(term_fctr, per_sumsq)) + 
+  geom_bar(stat = 'identity') + 
+  ylab('Proportion of\nvariance explained') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        axis.ticks.x = element_blank(), axis.title.x = element_blank())
+
+ggsave('plots/p_ind_site_ind_back_epi.pdf', p_ind_site_ind_back_epi, 
+       scale = 1.3, width = 2.3, height = 2.3, units = 'in')
+
+ggsave('plots/p_ind_site_ind_back_sum_epi.pdf', p_ind_site_ind_back_sum_epi,
+       scale = 1.3, width = 3, height = 2.5, units = 'in')
+
+ggsave('plots/p_ind_site_ind_back_anova_epi.pdf', p_ind_site_ind_back_anova_epi,
+       scale = 1.3, width = 2.5, height = 2.5)
+
+
+ind_site_ind_back_int <- subpool5_ncw %>%
+  filter(MPRA == 'integrated') %>%
+  ind_site_ind_back()
+
+ind_site_ind_back_sum_int <- ind_site_ind_back_sumtidy(ind_site_ind_back_int)
+
+ind_site_ind_back_anova_int <- tidy(anova(ind_site_ind_back_int)) %>%
+  mutate(term_fctr = factor(term, levels = term)) %>%
+  mutate(total_sumsq = sum(sumsq)) %>%
+  mutate(per_sumsq = sumsq/total_sumsq)
+
+ind_site_ind_back_p_r_int <- pred_resid(filter(subpool5_ncw, MPRA == 'integrated'), 
+                                        ind_site_ind_back_int)
+
+p_ind_site_ind_back_int <- ggplot(ind_site_ind_back_p_r_int, 
+                                  aes(ave_ratio, pred)) +
+  geom_point(alpha = 0.2, size = 1) +
+  scale_x_continuous(name = 'Measured expression', breaks = c(-2:1),
+                     limits = c(-2.1, 1.8)) + 
+  scale_y_continuous(name = 'Predicted expression', breaks = c(-2:1),
+                     limits = c(-2.1, 1.8)) +
+  annotation_logticks(sides = 'bl') +
+  annotate("text", x = -0.5, y = 1, 
+           label = paste('r =', 
+                         round(cor(ind_site_ind_back_p_r_int$pred,
+                                   ind_site_ind_back_p_r_int$ave_ratio,
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
+
+p_ind_site_ind_back_sum_int <- ind_site_ind_back_sum_int %>%
+  mutate(type = factor(type, 
+                       levels = c('v chr9', 's pGl4', 'v chr5', 'consensus', 
+                                  'weak'))) %>%
+  ggplot(aes(variable, estimate, fill = type)) + 
+  geom_bar(stat = 'identity', position = 'dodge', color = 'gray60', 
+           size = 0.3) + 
+  geom_hline(yintercept = 0, size = 0.25) +
+  scale_x_discrete(position = 'bottom') + 
+  scale_fill_viridis(discrete = TRUE) + 
+  theme(axis.ticks.x = element_blank(), legend.position = 'top',
+        axis.text.x = element_text(angle = 45, hjust = 1), 
+        axis.title.x = element_blank()) +
+  scale_y_continuous(breaks = c(-2, -1, 0, 0.5)) +
+  ylab('Weight')
+
+p_ind_site_ind_back_anova_int <- ind_site_ind_back_anova_int %>%
+  ggplot(aes(term_fctr, per_sumsq)) + 
+  geom_bar(stat = 'identity') + 
+  ylab('Proportion of\nvariance explained') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        axis.ticks.x = element_blank(), axis.title.x = element_blank())
+
+ggsave('plots/p_ind_site_ind_back_int.pdf', p_ind_site_ind_back_int, 
+       scale = 1.3, width = 2.3, height = 2.3, units = 'in')
+
+ggsave('plots/p_ind_site_ind_back_sum_int.pdf', p_ind_site_ind_back_sum_int,
+       scale = 1.3, width = 3, height = 2.5, units = 'in')
+
+ggsave('plots/p_ind_site_ind_back_anova_int.pdf', p_ind_site_ind_back_anova_int,
+       scale = 1.3, width = 2.5, height = 2.5)
+
+
+#break down integrated vs. transient by site combos
+
+cons_int_epi_lm <- lm(ave_ratio_22 ~ ave_med_ratio, 
+                      data = var_log10(filter(s5_int_trans, 
+                                              site_combo == 'consensus')))
+
+s5_int_trans_cons_lm <- pred_resid(var_log10(s5_int_trans), cons_int_epi_lm)
+
+p_s5_int_trans_site_combo <- s5_int_trans_cons_lm %>%
+  filter(site_combo != 'none') %>%
+  mutate(site_combo = factor(site_combo, 
+                             levels = c('consensus', 'weak', 'mixed'))) %>%
+  ggplot(aes(ave_med_ratio, ave_ratio_22)) +
+  facet_grid(. ~ site_combo) +
+  geom_point(alpha = 0.15, size = 0.5) +
+  geom_line(aes(ave_med_ratio, pred), color = 'red', size = 0.5) +
+  annotation_logticks() +
+  scale_y_continuous(breaks = seq(from = -1, to = 1, by =1)) +
+  xlab('Average integrated expression (a.u.)') +
+  ylab('Average episomal\nexpression (a.u.)') +
+  panel_border(colour = 'black') +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+ggsave('plots/p_s5_int_trans_site_combo.pdf', p_s5_int_trans_site_combo,
+       scale = 1.3, width = 4, height = 2.25, units = 'in')
+
+p_s5_int_trans_site_combo_resid <- s5_int_trans_cons_lm %>%
+  ggplot(aes(as.factor(consensus), resid, fill = as.factor(weak))) +
+  geom_boxplot(outlier.size = 1, size = 0.3, 
+               outlier.shape = 21, outlier.alpha = 1, 
+               position = position_dodge(0.75), show.legend = FALSE) +
+  scale_fill_manual(name = 'number of\nweak sites', 
+                    values = cbPalette7_grad_light) +
+  geom_hline(yintercept = 0, linetype = 2, size = 0.5, color = 'red') +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+ggsave('plots/p_s5_int_trans_site_combo_resid.pdf', 
+       p_s5_int_trans_site_combo_resid, scale = 1.3, width = 4, height = 2.25,
+       units = 'in')
 
 
 #Comparison to integrated with sum----------------------------------------------
