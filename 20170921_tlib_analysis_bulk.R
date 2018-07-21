@@ -771,78 +771,40 @@ controls <-
 
 #Plot subpool3 expression features----------------------------------------------
 
-#plot every background and spacing 5-20
+#v chr9 spacing overlay plots using 3 bp moving average and plot as line over 
+#original data in overlays
 
-p_subpool3_spa_back_norm <- s3_untidy %>%
-  filter(conc == 4 & spacing != 0) %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(x = dist, y = ave_ratio_norm)) + 
-  geom_point(alpha = 0.5, size = 1.2, color = 'black') +
-  geom_smooth(color = 'black', span = 0.1, size = 0.4, se = FALSE) +
-  facet_grid(spacing ~ background) + 
-  ylab('Average normalized\nexpression (a.u.)') + 
-  panel_border(colour = 'black') +
-  scale_y_log10() +
-  annotation_logticks(sides = 'l') +
-  background_grid(major = 'x', minor = 'none') +
-  scale_x_continuous("Distance along background (bp)", 
-                     breaks = seq(from = 0, to = 150, by = 10)) +
-  theme(legend.position = 'right',
-        strip.background = element_rect(colour="black", fill="white"))
+library(caTools)
 
-save_plot('plots/p_subpool3_spa_back_norm.pdf', p_subpool3_spa_back_norm,
-          scale = 1.3, base_height = 4, base_width = 11)
+moveavg_dist3 <- function(df) {
+  df <- df %>%
+    mutate(ave_3 = runmean(ave_ratio_22, 3, alg = 'R', endrule = 'NA'))
+}
 
-#v chr9 spacing overlay plots
-
-smooth_vchr9_5 <- s3_tidy %>%
+s3_tidy_moveavg3 <- s3_tidy %>%
   mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
-  filter(background == 'v chr9' & dist < 124 & spacing == 5) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22)) +
-  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
+  select(background, spacing, dist, ave_ratio_22) %>%
+  group_by(background, spacing) %>%
+  arrange(dist, .by_group = TRUE) %>%
+  nest() %>%
+  mutate(ave_3 = map(.$data, moveavg_dist3)) %>%
+  unnest() %>%
+  select(-dist1, -ave_ratio_221)
 
-smooth_vchr9_5_df <- ggplot_build(smooth_vchr9_5)$data[[1]]
-
-smooth_vchr9_10 <- s3_tidy %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
-  filter(background == 'v chr9' & dist < 124 & spacing == 10) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22)) +
-  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
-
-smooth_vchr9_10_df <- ggplot_build(smooth_vchr9_10)$data[[1]]
-
-smooth_vchr9_15 <- s3_tidy %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
-  filter(background == 'v chr9' & dist < 124 & spacing == 15) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22)) +
-  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
-
-smooth_vchr9_15_df <- ggplot_build(smooth_vchr9_15)$data[[1]]
-
-smooth_vchr9_20 <- s3_tidy %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
-  filter(background == 'v chr9' & dist < 124 & spacing == 20) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22)) +
-  geom_smooth(span = 0.15, size = 0.4, se = TRUE)
-
-smooth_vchr9_20_df <- ggplot_build(smooth_vchr9_20)$data[[1]]
-
-p_subpool3_spa_4_vchr9_5_10 <- s3_tidy %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
+test <- filter(s3_tidy_moveavg3, background == 'v chr9' & spacing != 0)
+  
+p_subpool3_spa_4_vchr9_5_10 <- s3_tidy_moveavg3 %>%
   filter(background == 'v chr9' & dist < 124 & (spacing == 5 | spacing == 10)) %>%
   ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.15, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = seq(from = 78, to = 88.3, by = 10.3), color = 'gray20', 
-             linetype = 2, alpha = 0.5) +
-  geom_vline(xintercept = seq(from = 82.6, to = 91.9, by = 9.3), 
-             color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = c(78, 88.5), color = 'gray20', linetype = 2, 
+             alpha = 0.5) +
+  geom_vline(xintercept = c(82.5, 92.5), color = 'dodgerblue3', linetype = 2, 
+             alpha = 0.5) +
   scale_y_log10(limits = c(0.1, 2)) +
   annotation_logticks(sides = 'l') +
   background_grid(major = 'x', minor = 'none') +
@@ -851,21 +813,19 @@ p_subpool3_spa_4_vchr9_5_10 <- s3_tidy %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_4_vchr9_5_15 <- s3_tidy %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
+p_subpool3_spa_4_vchr9_5_15 <- s3_tidy_moveavg3 %>%
   filter(background == 'v chr9' & dist < 124 & (spacing == 5 | spacing == 15)) %>%
   ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.15, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'firebrick3'), 
                      name = 'spacing (bp)') +
   scale_fill_manual(values = c('gray20', 'firebrick3'), 
-                     name = 'spacing (bp)') +
+                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = seq(from = 78, to = 88.3, by = 10.3), color = 'gray20', 
-             linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = c(78, 88.5), color = 'gray20', linetype = 2, 
+             alpha = 0.5) +
   scale_y_log10(limits = c(0.1, 2)) +
   annotation_logticks(sides = 'l') +
   background_grid(major = 'x', minor = 'none') +
@@ -874,21 +834,19 @@ p_subpool3_spa_4_vchr9_5_15 <- s3_tidy %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_4_vchr9_10_20 <- s3_tidy %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
+p_subpool3_spa_4_vchr9_10_20 <- s3_tidy_moveavg3 %>%
   filter(background == 'v chr9' & dist < 124 & (spacing == 10 | spacing == 20)) %>%
   ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.15, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
                      name = 'spacing (bp)') +
   scale_fill_manual(values = c('dodgerblue3', '#55C667FF'),
-                     name = 'spacing (bp)') +
+                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = seq(from = 82.6, to = 91.9, by = 9.3), 
-             color = 'dodgerblue3', linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = c(82.5, 92.5), color = 'dodgerblue3', linetype = 2, 
+             alpha = 0.5) +
   scale_y_log10(limits = c(0.1, 2)) +
   annotation_logticks(sides = 'l') +
   background_grid(major = 'x', minor = 'none') +
@@ -1654,18 +1612,34 @@ s3_int_trans <- MPRA_ave %>%
   subpool3()
 
 
+library(caTools)
+
+int_epi_moveavg_dist3 <- function(df) {
+  df <- df %>%
+    mutate(ave_3 = runmean(ave_ratio, 3, alg = 'R', endrule = 'NA'))
+}
+
+s3_int_trans_moveavg3 <- s3_int_trans %>%
+  select(spacing, dist, background, MPRA, ave_ratio) %>%
+  group_by(background, spacing, MPRA) %>%
+  arrange(dist, .by_group = TRUE) %>%
+  nest() %>%
+  mutate(ave_3 = map(.$data, int_epi_moveavg_dist3)) %>%
+  unnest() %>%
+  select(-dist1, -ave_ratio1)
+
+
 #Subpool3 despite noise seems to have same distance effects across background
 
-p_space_dist_int_trans <- s3_int_trans %>%
+p_space_dist_int_trans <- s3_int_trans_moveavg3 %>%
   filter(background != 'v chr9') %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   ggplot(aes(x = dist, y = ave_ratio, color = MPRA)) + 
   geom_point(alpha = 0.5, size = 1.2) +
-  geom_smooth(aes(fill = MPRA), span = 0.15, size = 0.4, alpha = 0.2, se = TRUE) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   facet_grid(spacing ~ background) +
   scale_color_manual(values = c('#3CBB75FF', 'gray35')) +
-  scale_fill_manual(values = c('#3CBB75FF', 'gray35')) +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10() +
@@ -1739,14 +1713,12 @@ ggsave('plots/p_s3_dist_trans_bin20bp.pdf', p_s3_dist_trans_bin20bp,
 
 #spacing effects in integrated and episomal backgrounds
 
-p_subpool3_spa_spgl4_trans_5_10 <- s3_int_trans %>%
-  filter(background == 's pGl4' & (spacing == 5 | spacing == 10)) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_spgl4_trans_5_10 <- s3_int_trans_moveavg3 %>%
+  filter(background == 's pGl4' & (spacing == 5 | spacing == 10) & MPRA == 'episomal') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.1, 0.7)) +
@@ -1757,16 +1729,13 @@ p_subpool3_spa_spgl4_trans_5_10 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_spgl4_trans_5_15 <- s3_int_trans %>%
-  filter(background == 's pGl4' & (spacing == 5 | spacing == 15)) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_spgl4_trans_5_15 <- s3_int_trans_moveavg3 %>%
+  filter(background == 's pGl4' & (spacing == 5 | spacing == 15) & MPRA == 'episomal') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'firebrick3'), 
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'firebrick3'), 
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.1, 0.7)) +
@@ -1777,16 +1746,13 @@ p_subpool3_spa_spgl4_trans_5_15 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_spgl4_trans_10_20 <- s3_int_trans %>%
-  filter(background == 's pGl4' & (spacing == 10 | spacing == 20)) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_spgl4_trans_10_20 <- s3_int_trans_moveavg3 %>%
+  filter(background == 's pGl4' & (spacing == 10 | spacing == 20) & MPRA == 'episomal') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('dodgerblue3', '#55C667FF'),
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.1, 0.7)) +
@@ -1808,14 +1774,12 @@ ggsave('plots/p_subpool3_spa_spgl4_trans_10_20.pdf', p_subpool3_spa_spgl4_trans_
        scale = 1.3, height = 1.4, width = 6.5, units = 'in')
   
 
-p_subpool3_spa_spgl4_int_5_10 <- s3_int_trans %>%
-  filter(background == 's pGl4' & (spacing == 5 | spacing == 10)) %>%
-  ggplot(aes(x = dist, y = ave_med_ratio, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_spgl4_int_5_10 <- s3_int_trans_moveavg3 %>%
+  filter(background == 's pGl4' & (spacing == 5 | spacing == 10) & MPRA == 'integrated') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.01, 0.4)) +
@@ -1826,16 +1790,13 @@ p_subpool3_spa_spgl4_int_5_10 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_spgl4_int_5_15 <- s3_int_trans %>%
-  filter(background == 's pGl4' & (spacing == 5 | spacing == 15)) %>%
-  ggplot(aes(x = dist, y = ave_med_ratio, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_spgl4_int_5_15 <- s3_int_trans_moveavg3 %>%
+  filter(background == 's pGl4' & (spacing == 5 | spacing == 15) & MPRA == 'integrated') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'firebrick3'), 
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'firebrick3'), 
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.01, 0.4)) +
@@ -1846,16 +1807,13 @@ p_subpool3_spa_spgl4_int_5_15 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_spgl4_int_10_20 <- s3_int_trans %>%
-  filter(background == 's pGl4' & (spacing == 10 | spacing == 20)) %>%
-  ggplot(aes(x = dist, y = ave_med_ratio, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_spgl4_int_10_20 <- s3_int_trans_moveavg3 %>%
+  filter(background == 's pGl4' & (spacing == 10 | spacing == 20) & MPRA == 'integrated') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('dodgerblue3', '#55C667FF'),
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.01, 0.4)) +
@@ -1877,14 +1835,12 @@ ggsave('plots/p_subpool3_spa_spgl4_int_10_20.pdf', p_subpool3_spa_spgl4_int_10_2
        scale = 1.3, height = 1.4, width = 6.5, units = 'in')
 
 
-p_subpool3_spa_vchr5_trans_5_10 <- s3_int_trans %>%
-  filter(background == 'v chr5' & (spacing == 5 | spacing == 10)) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_vchr5_trans_5_10 <- s3_int_trans_moveavg3 %>%
+  filter(background == 'v chr5' & (spacing == 5 | spacing == 10) & MPRA == 'episomal') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.2, 4)) +
@@ -1895,16 +1851,13 @@ p_subpool3_spa_vchr5_trans_5_10 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_vchr5_trans_5_15 <- s3_int_trans %>%
-  filter(background == 'v chr5' & (spacing == 5 | spacing == 15)) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_vchr5_trans_5_15 <- s3_int_trans_moveavg3 %>%
+  filter(background == 'v chr5' & (spacing == 5 | spacing == 15) & MPRA == 'episomal') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'firebrick3'), 
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'firebrick3'), 
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.2, 4)) +
@@ -1915,16 +1868,13 @@ p_subpool3_spa_vchr5_trans_5_15 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_vchr5_trans_10_20 <- s3_int_trans %>%
-  filter(background == 'v chr5' & (spacing == 10 | spacing == 20)) %>%
-  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_vchr5_trans_10_20 <- s3_int_trans_moveavg3 %>%
+  filter(background == 'v chr5' & (spacing == 10 | spacing == 20) & MPRA == 'episomal') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('dodgerblue3', '#55C667FF'),
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.2, 4)) +
@@ -1946,14 +1896,12 @@ ggsave('plots/p_subpool3_spa_vchr5_trans_10_20.pdf', p_subpool3_spa_vchr5_trans_
        scale = 1.3, height = 1.4, width = 6.5, units = 'in')
 
 
-p_subpool3_spa_vchr5_int_5_10 <- s3_int_trans %>%
-  filter(background == 'v chr5' & (spacing == 5 | spacing == 10)) %>%
-  ggplot(aes(x = dist, y = ave_med_ratio, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_vchr5_int_5_10 <- s3_int_trans_moveavg3 %>%
+  filter(background == 'v chr5' & (spacing == 5 | spacing == 10) & MPRA == 'integrated') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.03, 4)) +
@@ -1964,16 +1912,13 @@ p_subpool3_spa_vchr5_int_5_10 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_vchr5_int_5_15 <- s3_int_trans %>%
-  filter(background == 'v chr5' & (spacing == 5 | spacing == 15)) %>%
-  ggplot(aes(x = dist, y = ave_med_ratio, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_vchr5_int_5_15 <- s3_int_trans_moveavg3 %>%
+  filter(background == 'v chr5' & (spacing == 5 | spacing == 15) & MPRA == 'integrated') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('gray20', 'firebrick3'), 
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('gray20', 'firebrick3'), 
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.03, 4)) +
@@ -1984,16 +1929,13 @@ p_subpool3_spa_vchr5_int_5_15 <- s3_int_trans %>%
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
-p_subpool3_spa_vchr5_int_10_20 <- s3_int_trans %>%
-  filter(background == 'v chr5' & (spacing == 10 | spacing == 20)) %>%
-  ggplot(aes(x = dist, y = ave_med_ratio, color = as.factor(spacing))) +
-  geom_smooth(aes(fill = as.factor(spacing)), span = 0.1, size = 0.4, 
-              alpha = 0.2, se = TRUE) +
+p_subpool3_spa_vchr5_int_10_20 <- s3_int_trans_moveavg3 %>%
+  filter(background == 'v chr5' & (spacing == 10 | spacing == 20) & MPRA == 'integrated') %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
   scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
                      name = 'spacing (bp)') +
-  scale_fill_manual(values = c('dodgerblue3', '#55C667FF'),
-                    name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
   scale_y_log10(limits = c(0.03, 4)) +
