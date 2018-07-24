@@ -17,13 +17,7 @@ cbPalette7 <- c('#440154FF', '#39568CFF', '#287D8EFF', '#20A387FF', '#73D055FF',
                 '#B8DE29FF', '#FDE725FF')
 cbPalette7_grad_light <- c('white', '#FDE725FF', '#B8DE29FF', '#55C667FF', 
                            '#1F968BFF', '#39568CFF', '#482677FF')
-cbPalette6_grad_light <- c('#FDE725FF', '#B8DE29FF', '#55C667FF', '#1F968BFF', 
-                           '#39568CFF', '#482677FF')
-forskolin2 <- c('white', 'aquamarine3')
-cbPalette5 <- c('#440154FF', '#39568CFF', '#238A8DFF', '#29AF7FFF', 
-                '#73D055FF')
-cbPalette4 <- c('#481567FF', '#33638DFF', '#20A387FF','#95D840FF')
-cbPalette3 <- c('grey20', 'springgreen3', 'deepskyblue3')
+spacing_5_20_palette <- c('gray20', 'dodgerblue3', 'indianred2', '#55C667FF')
 
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
@@ -1666,14 +1660,15 @@ p_s3_dist_int_bin20bp <- s3_int_trans_bin20bp %>%
   mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
   filter(spacing != 0 & spacing != 70 & background != 'v chr9' & bin != '174-196' & MPRA == 'integrated') %>%
   ggplot(aes(bin, ave_ratio)) +
-  geom_signif(comparisons = list(c('64-86', '152-174'))) +
+  geom_signif(comparisons = list(c('64-86', '86-108')), y_position = log10(2)) +
+  geom_signif(comparisons = list(c('64-86', '108-130')), y_position = log10(4)) +
   facet_grid(. ~ background) +
   geom_jitter(aes(color = as.factor(spacing)), 
               position=position_jitter(width=0.3, height=0), alpha = 0.75,
               size = 0.75) +
   geom_boxplot(outlier.shape=NA, size = 0.3, position = position_dodge(1),
                show.legend = FALSE, alpha = 0) +
-  scale_color_manual(values = cbPalette4, name = 'spacing (bp)') +
+  scale_color_manual(values = spacing_5_20_palette, name = 'spacing (bp)') +
   theme(legend.position = 'right', axis.ticks.x = element_blank(), 
         strip.background = element_rect(colour="black", fill="white"),
         axis.text.x = element_text(angle = 45, hjust = 1)) + 
@@ -1687,14 +1682,15 @@ p_s3_dist_trans_bin20bp <- s3_int_trans_bin20bp %>%
   mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
   filter(spacing != 0 & spacing != 70 & background != 'v chr9' & bin != '174-196' & MPRA == 'episomal') %>%
   ggplot(aes(bin, ave_ratio)) +
-  geom_signif(comparisons = list(c('64-86', '152-174'))) +
+  geom_signif(comparisons = list(c('64-86', '86-108')), y_position = log10(4)) +
+  geom_signif(comparisons = list(c('64-86', '108-130')), y_position = log10(10)) +
   facet_grid(. ~ background) +
   geom_jitter(aes(color = as.factor(spacing)), 
               position=position_jitter(width=0.3, height=0), alpha = 0.75,
               size = 0.75) +
   geom_boxplot(outlier.shape=NA, size = 0.3, position = position_dodge(1),
                show.legend = FALSE, alpha = 0) +
-  scale_color_manual(values = cbPalette4, name = 'spacing (bp)') +
+  scale_color_manual(values = spacing_5_20_palette, name = 'spacing (bp)') +
   theme(legend.position = 'right', axis.ticks.x = element_blank(), 
         strip.background = element_rect(colour="black", fill="white"),
         axis.text.x = element_text(angle = 45, hjust = 1)) + 
@@ -1712,6 +1708,51 @@ ggsave('plots/p_s3_dist_trans_bin20bp.pdf', p_s3_dist_trans_bin20bp,
 
 
 #spacing effects in integrated and episomal backgrounds
+
+#fix axis limits between the graphs above and the graphs below
+
+p_s3_space_trans <- s3_int_trans %>%
+  filter(dist <= 108 & background != 'v chr9' & MPRA == 'episomal') %>%
+  mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
+  ggplot(aes(as.factor(spacing), ave_ratio)) +
+  facet_grid(. ~ background) +
+  geom_signif(comparisons = list(c('5', '10')), y_position = log10(3)) +
+  geom_signif(comparisons = list(c('5', '15')), y_position = log10(7)) +
+  geom_signif(comparisons = list(c('5', '20')), y_position = log10(15)) +
+  geom_boxplot(size = 0.3, position = position_dodge(1)) +
+  theme(axis.ticks.x = element_blank(), 
+        strip.background = element_rect(colour="black", fill="white")) + 
+  scale_y_log10(limits = c(0.060, 20)) +
+  annotation_logticks(sides = 'l') +
+  panel_border(colour = 'black') +
+  ylab('Average expression (a.u.)') +
+  xlab('Spacing (bp)')
+
+p_s3_space_int <- s3_int_trans %>%
+  filter(dist <= 108 & background != 'v chr9' & MPRA == 'integrated') %>%
+  mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
+  ggplot(aes(as.factor(spacing), ave_ratio)) +
+  facet_grid(. ~ background) +
+  geom_signif(comparisons = list(c('5', '10')), y_position = log10(1.5)) +
+  geom_signif(comparisons = list(c('5', '15')), y_position = log10(5)) +
+  geom_signif(comparisons = list(c('5', '20')), y_position = log10(14)) +
+  geom_boxplot(size = 0.3, position = position_dodge(1)) +
+  theme(axis.ticks.x = element_blank(), 
+        strip.background = element_rect(colour="black", fill="white")) + 
+  scale_y_log10(limits = c(0.010, 20)) +
+  annotation_logticks(sides = 'l') +
+  panel_border(colour = 'black') +
+  ylab('Average expression (a.u.)') +
+  xlab('Spacing (bp)')
+
+ggsave('plots/p_s3_space_trans.pdf', p_s3_space_trans, scale = 1.3,
+       width = 4, height = 2, units = 'in')
+
+ggsave('plots/p_s3_space_int.pdf', p_s3_space_int, scale = 1.3,
+       width = 4, height = 2, units = 'in')
+  
+  
+#spacing offsets in integrated and episomal backgrounds
 
 p_subpool3_spa_spgl4_trans_5_10 <- s3_int_trans_moveavg3 %>%
   filter(background == 's pGl4' & (spacing == 5 | spacing == 10) & MPRA == 'episomal') %>%
@@ -2256,228 +2297,257 @@ ggsave('plots/p_s5_int_trans_site_combo_resid.pdf',
        units = 'in')
 
 
-#Comparison to integrated with sum----------------------------------------------
+#Comparison to integrated with median episomal----------------------------------
 
-int_rep_sum_1_2 <- read_tsv('../20171129_intLib/rep_1_2_sum.txt') %>%
-  mutate(ave_ratio_int = (ratio_br1 + ratio_br2)/2)
+#First look at periodicity offset in episomal for main figure 
 
-int_trans <- rep_0_22_A_B %>%
-  select(subpool, name, most_common, barcodes_DNA, ratio_22A, barcodes_RNA_22A, 
-         ratio_22B, barcodes_RNA_22B) %>%
-  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
-  inner_join(int_rep_sum_1_2, by = c('subpool', 'name', 'most_common'))
-
-p_rep_2_2 <- rep_0_22_A_B %>%
-  ggplot(aes(ratio_22A, ratio_22B)) +
-  geom_point(alpha = 0.1, size = 0.75) +
-  geom_point(data = filter(rep_0_22_A_B, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             fill = 'orange', shape = 21, size = 1.5) + 
-  geom_point(data = filter(rep_0_22_A_B, 
-                           name == 'pGL4.29 Promega 1-63 + 1-87'), 
-             fill = 'red', shape = 21, size = 1.5) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Expression (a.u.) replicate 1") +
-  ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.09, 20)) + 
-  scale_y_log10(limits = c(0.09, 20)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  theme(strip.background = element_rect(colour="black", fill="white"),
-        axis.line.y = element_line(), panel.spacing.x=unit(1, "lines")) 
-
-p_int_trans_ave_sum_rep <- int_trans %>%
-  ggplot(aes(ave_ratio_int, ave_ratio_22)) +
-  geom_point(alpha = 0.1, size = 0.75) +
-  geom_point(data = filter(int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             fill = 'orange', shape = 21, size = 1.5) + 
-  geom_point(data = filter(int_trans, 
-                           name == 'pGL4.29 Promega 1-63 + 1-87'), 
-             fill = 'red', shape = 21, size = 1.5) +
-  annotation_logticks(scaled = TRUE) +
-  xlab("Average integrated expression (a.u.)") +
-  ylab("Average episomal expression (a.u.)") +
-  scale_x_log10(limits = c(0.02, 20)) + 
-  scale_y_log10(limits = c(0.02, 20)) +
-  background_grid(major = 'xy', minor = 'none') + 
-  theme(strip.background = element_rect(colour="black", fill="white"),
-        axis.line.y = element_line(), panel.spacing.x=unit(1, "lines")) 
+s3_tidy <- med_rep_0_22_A_B %>%
+  ungroup() %>%
+  mutate(
+    name = gsub('Smith R. Vista chr9:83712599-83712766', 'v chr9', name),
+    name = gsub('Vista Chr5:88673410-88674494', 'v chr5', name),
+    name = gsub('scramble pGL4.29 Promega 1-63 \\+ 1-87', 's pGl4', name)
+  ) %>%
+  mutate(background = name) %>%
+  mutate(background = str_sub(background, 
+                              nchar(background)-5,
+                              nchar(background))) %>%
+  subpool3()
 
 
+s3_tidy_moveavg3 <- s3_tidy %>%
+  mutate(ave_ratio_22 = (med_ratio_22A + med_ratio_22B)/2) %>%
+  select(background, spacing, dist, ave_ratio_22) %>%
+  group_by(background, spacing) %>%
+  arrange(dist, .by_group = TRUE) %>%
+  nest() %>%
+  mutate(ave_3 = map(.$data, moveavg_dist3)) %>%
+  unnest() %>%
+  select(-dist1, -ave_ratio_221)
 
-p_int_trans_s5_sum <- int_trans %>%
-  filter(subpool == 'subpool5') %>%
-  ggplot(aes(ave_ratio_int, ave_ratio_22)) +
-  geom_point(alpha = 0.2, size = 1) +
-  geom_point(data = filter(int_trans, 
-                           grepl(
-                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
-                             name)), 
-             fill = 'orange', shape = 21, size = 1.75) +
-  annotation_logticks(scaled = TRUE) +
-  scale_x_log10(limits = c(0.018, 18)) +
-  scale_y_log10(limits = c(0.018, 18)) +
-  xlab("Integrated average expression") +
-  ylab("Transient average expression") +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.1, y = 5,
-           label = paste('r =', 
-                         round(cor(filter(int_trans_log10, 
-                                          subpool == 'subpool5')$ave_ratio_int, 
-                                   filter(int_trans_log10, 
-                                          subpool == 'subpool5')$ave_ratio_22,
-                                   use = "pairwise.complete.obs", 
-                                   method = "pearson"), 3)))
+p_subpool3_spa_4_vchr9_5_10 <- s3_tidy_moveavg3 %>%
+  filter(background == 'v chr9' & dist < 124 & (spacing == 5 | spacing == 10)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = c(78, 88.5), color = 'gray20', linetype = 2, 
+             alpha = 0.5) +
+  geom_vline(xintercept = c(82.5, 92.5), color = 'dodgerblue3', linetype = 2, 
+             alpha = 0.5) +
+  scale_y_log10(limits = c(0.1, 2)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance to minimal promoter (bp)", 
+                     breaks = seq(from = 64, to = 124, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
 
-save_plot('plots/p_int_trans_s5_sum.pdf', p_int_trans_s5_sum, scale = 1.3,
-          base_width = 2.75, base_height = 2.5)
+p_subpool3_spa_4_vchr9_5_15 <- s3_tidy_moveavg3 %>%
+  filter(background == 'v chr9' & dist < 124 & (spacing == 5 | spacing == 15)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  scale_color_manual(values = c('gray20', 'firebrick3'), 
+                     name = 'spacing (bp)') +
+  scale_fill_manual(values = c('gray20', 'firebrick3'), 
+                    name = 'spacing (bp)') +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = c(78, 88.5), color = 'gray20', linetype = 2, 
+             alpha = 0.5) +
+  scale_y_log10(limits = c(0.1, 2)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance to minimal promoter (bp)", 
+                     breaks = seq(from = 64, to = 124, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
 
-p_int_trans_s3_sum <- int_trans %>%
-  filter(subpool == 'subpool3') %>%
-  ggplot(aes(ave_ratio_int, ave_ratio_22)) +
-  geom_point(alpha = 0.2, size = 1) +
-  annotation_logticks(scaled = TRUE) +
-  scale_x_log10(limits = c(0.018, 18)) +
-  scale_y_log10(limits = c(0.018, 18)) +
-  xlab("Integrated average expression") +
-  ylab("Transient average expression") +
-  background_grid(major = 'xy', minor = 'none') + 
-  annotate("text", x = 0.1, y = 5,
-           label = paste('r =', 
-                         round(cor(filter(int_trans_log10, 
-                                          subpool == 'subpool3')$ave_ratio_int, 
-                                   filter(int_trans_log10, 
-                                          subpool == 'subpool3')$ave_ratio_22,
-                                   use = "pairwise.complete.obs", 
-                                   method = "pearson"), 3)))
+p_subpool3_spa_4_vchr9_10_20 <- s3_tidy_moveavg3 %>%
+  filter(background == 'v chr9' & dist < 124 & (spacing == 10 | spacing == 20)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
+                     name = 'spacing (bp)') +
+  scale_fill_manual(values = c('dodgerblue3', '#55C667FF'),
+                    name = 'spacing (bp)') +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = c(82.5, 92.5), color = 'dodgerblue3', linetype = 2, 
+             alpha = 0.5) +
+  scale_y_log10(limits = c(0.1, 2)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance to minimal promoter (bp)", 
+                     breaks = seq(from = 64, to = 124, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
 
-save_plot('plots/p_int_trans_s3_sum.pdf', p_int_trans_s3_sum, scale = 1.3,
-          base_width = 2.75, base_height = 2.5)
+ggsave('plots/p_subpool3_med_spa_4_vchr9_5_10.pdf', p_subpool3_spa_4_vchr9_5_10, 
+       scale = 1.3, height = 1.65, width = 4.8, units = 'in')
 
-back_norm_int <- function(df1) {
-  gsub_1_2 <- df1 %>%
-    ungroup () %>%
-    filter(subpool != 'control') %>%
-    mutate(
-      name = gsub('Smith R. Vista chr9:83712599-83712766', 'v chr9', name),
-      name = gsub('Vista Chr5:88673410-88674494', 'v chr5', name),
-      name = gsub('scramble pGL4.29 Promega 1-63 \\+ 1-87', 's pGl4', name)
-    ) %>%
-    mutate(background = name) %>%
-    mutate(background = str_sub(background, nchar(background)-5, nchar(background)))
-  backgrounds <- gsub_1_2 %>%
-    filter(startsWith(name, 'subpool5_no_site_no_site_no_site_no_site_no_site_no_site')) %>%
-    select(background, ratio_br1, ratio_br2) %>%
-    rename(ratio_br1_back = ratio_br1) %>%
-    rename(ratio_br2_back = ratio_br2) 
-  back_join_norm <- left_join(gsub_1_2, backgrounds, by = 'background') %>%
-    mutate(ratio_br1_norm = ratio_br1/ratio_br1_back) %>%
-    mutate(ratio_br2_norm = ratio_br2/ratio_br2_back) %>%
-    mutate(ave_ratio_int_norm = (ratio_br1_norm + ratio_br2_norm)/2)
-}
+ggsave('plots/p_subpool3_med_spa_4_vchr9_5_15.pdf', p_subpool3_spa_4_vchr9_5_15, 
+       scale = 1.3, height = 1.65, width = 4.8, units = 'in')
 
-int_trans_back_norm <- int_rep_sum_1_2 %>%
-  back_norm_int() %>%
-  left_join(trans_back_norm_rep_0_22, by = c('subpool', 'name', 'most_common', 
-                                             'background')) %>%
-  select(subpool, name, most_common, background, barcodes_RNA_22A, 
-         barcodes_RNA_22B, ratio_22A_norm, ratio_22B_norm, ave_ratio_22_norm, 
-         barcodes_RNA_br1, barcodes_RNA_br2, ratio_br1_norm, ratio_br2_norm, 
-         ave_ratio_int_norm)
+ggsave('plots/p_subpool3_med_spa_4_vchr9_10_20.pdf', p_subpool3_spa_4_vchr9_10_20, 
+       scale = 1.3, height = 1.65, width = 4.8, units = 'in')
 
-#Integrated library has overall higher normalized expression since background is
-#much more lowly expressed in integrated compared to transient
 
-test <- int_trans_back_norm %>%
-  filter(subpool == 'subpool5') %>%
-  ggplot(aes(ave_ratio_int_norm, ave_ratio_22_norm)) + 
-  scale_x_log10() +
-  scale_y_log10() +
-  geom_abline(slope = 1) +
-  annotation_logticks() +
-  geom_point(alpha = 0.2)
+#Compare features to integrated
 
-MPRA_back_norm_ave <- int_trans_back_norm %>%
+int_rep_1_2 <- read_tsv('../20171129_intLib/rep_1_2.txt') %>%
+  mutate(ave_med_ratio = (med_ratio_br1 + med_ratio_br2)/2)
+
+int_trans <- med_rep_0_22_A_B %>%
+  select(subpool, name, most_common, barcodes_DNA, med_ratio_22A, 
+         barcodes_RNA_22A, med_ratio_22B, barcodes_RNA_22B) %>%
+  mutate(ave_ratio_22 = (med_ratio_22A + med_ratio_22B)/2) %>%
+  inner_join(int_rep_1_2, by = c('subpool', 'name', 'most_common'))
+
+MPRA_ave <- int_trans %>%
+  ungroup() %>%
+  filter(subpool != 'control') %>%
+  mutate(
+    name = gsub('Smith R. Vista chr9:83712599-83712766', 'v chr9', name),
+    name = gsub('Vista Chr5:88673410-88674494', 'v chr5', name),
+    name = gsub('scramble pGL4.29 Promega 1-63 \\+ 1-87', 's pGl4', name)
+  ) %>%
+  mutate(background = name) %>%
+  mutate(background = str_sub(background, 
+                              nchar(background)-5,
+                              nchar(background))) %>%
   select(subpool, name, background, barcodes_RNA_br1, barcodes_RNA_br2, 
-         ratio_br1_norm, ratio_br2_norm, ave_ratio_int_norm, 
-         barcodes_RNA_22A, barcodes_RNA_22B, ratio_22A_norm, ratio_22B_norm,
-         ave_ratio_22_norm) %>%
+         med_ratio_br1, med_ratio_br2, ave_med_ratio, barcodes_RNA_22A, 
+         barcodes_RNA_22B, med_ratio_22A, med_ratio_22B, ave_ratio_22) %>%
   mutate(integrated = (barcodes_RNA_br1 + barcodes_RNA_br2)/2) %>%
-  mutate(transient = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+  mutate(episomal = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
   select(-barcodes_RNA_br1, -barcodes_RNA_br2, -barcodes_RNA_22A, 
          -barcodes_RNA_22B) %>%
-  gather(integrated, transient, key = 'MPRA', value = 'barcodes') %>%
-  mutate(integrated = ave_ratio_int_norm) %>%
-  mutate(transient = ave_ratio_22_norm) %>%
-  gather(integrated, transient, key = 'MPRA2', value = 'ave_ratio_norm') %>%
-  filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'transient' & MPRA2 == 'transient')) %>%
+  gather(integrated, episomal, key = 'MPRA', value = 'barcodes') %>%
+  mutate(integrated = ave_med_ratio) %>%
+  mutate(episomal = ave_ratio_22) %>%
+  gather(integrated, episomal, key = 'MPRA2', value = 'ave_ratio') %>%
+  filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'episomal' & MPRA2 == 'episomal')) %>%
   select(-MPRA2)
-  
-#weak contribution to consensus
 
-p_weak_cons_int_trans <- MPRA_back_norm_ave %>%
-  subpool5() %>%
-  filter(background == 's pGl4' & MPRA == 'integrated') %>%
-  ggplot(aes(as.factor(consensus), ave_ratio_norm, fill = as.factor(weak))) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) +
-  panel_border(colour = 'black') +
-  scale_y_log10() +
+int_trans_log10 <- var_log10(int_trans)
+
+int_trans_pearsons <- tibble(
+  sample = c('all', 'subpool3', 'subpool5'),
+  pearsons = c(round(cor(int_trans_log10$ave_med_ratio, 
+                         int_trans_log10$ave_ratio_22, 
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(filter(int_trans_log10, 
+                                subpool == 'subpool3')$ave_med_ratio,
+                         filter(int_trans_log10, 
+                                subpool == 'subpool3')$ave_ratio_22,
+                         use = "pairwise.complete.obs", method = "pearson"), 3),
+               round(cor(filter(int_trans_log10, 
+                                subpool == 'subpool5')$ave_med_ratio,
+                         filter(int_trans_log10, 
+                                subpool == 'subpool5')$ave_ratio_22,
+                         use = "pairwise.complete.obs", method = "pearson"), 
+                     3)))
+
+write_csv(int_trans_pearsons, 'int_trans_med_pearsons.csv')
+
+p_int_trans_ave_med_rep_sp3 <- int_trans %>%
+  filter(subpool == 'subpool3') %>%
+  ggplot(aes(ave_med_ratio, ave_ratio_22)) +
+  geom_point(alpha = 0.2, size = 1) +
+  xlab("Average integrated expression (a.u.)") +
+  ylab("Average episomal expression (a.u.)") +
+  scale_x_log10(limits = c(0.01, 5)) + 
+  scale_y_log10(limits = c(0.05, 5)) +
+  annotation_logticks(scaled = TRUE)
+
+ggsave('plots/p_int_med_trans_med_ave_rep_sp3.pdf', p_int_trans_ave_med_rep_sp3, 
+       scale = 1.3, width = 3, height = 2.7, units = 'in')
+
+
+#Compare subpool3 features between integrated and transient
+
+s3_int_trans <- MPRA_ave %>%
+  filter(subpool == 'subpool3') %>%
+  subpool3()
+
+s3_int_trans_bin20bp <- s3_int_trans %>%
+  mutate(bin = cut(dist, seq(from = 64, to = 196, by = 22),
+                   labels = c('64-86', '86-108', '108-130', '130-152',
+                              '152-174', '174-196')))
+
+p_s3_dist_trans_bin20bp <- s3_int_trans_bin20bp %>%
+  mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
+  filter(spacing != 0 & spacing != 70 & background != 'v chr9' & bin != '174-196' & MPRA == 'episomal') %>%
+  ggplot(aes(bin, ave_ratio)) +
+  geom_signif(comparisons = list(c('64-86', '86-108')), y_position = log10(4)) +
+  geom_signif(comparisons = list(c('64-86', '108-130')), y_position = log10(10)) +
+  facet_grid(. ~ background) +
+  geom_jitter(aes(color = as.factor(spacing)), 
+              position=position_jitter(width=0.3, height=0), alpha = 0.75,
+              size = 0.75) +
+  geom_boxplot(outlier.shape=NA, size = 0.3, position = position_dodge(1),
+               show.legend = FALSE, alpha = 0) +
+  scale_color_manual(values = spacing_5_20_palette, name = 'spacing (bp)') +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(), 
+        strip.background = element_rect(colour="black", fill="white"),
+        axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_y_log10(limits = c(0.065, 20)) +
   annotation_logticks(sides = 'l') +
-  background_grid(major = 'y', minor = 'none') +
-  scale_fill_manual(name = 'number of\nweak sites', 
-                    values = cbPalette7_grad_light) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  ylab('Average normalized\nexpression (a.u.)') +
-  xlab('Number of consensus sites')
-
-save_plot('plots/p_weak_cons_int_trans.pdf', p_weak_cons_int_trans,
-          scale = 1.3, base_height = 2.25, base_width = 5.25)
-
-#Show effect of adding weak sites to consensus sites per MPRA
-
-med_weak_over_med_cons <- function(df) {
-  med_cons <- df %>%
-    filter(weak == 0) %>%
-    group_by(background, consensus, MPRA) %>%
-    summarize(cons_med = median(ave_ratio_norm)) %>%
-    ungroup()
-  norm_cons <- df %>%
-    left_join(med_cons, by = c('background', 'consensus', 'MPRA')) %>%
-    mutate(ratio_norm_over_med_cons = ave_ratio_norm/cons_med) %>%
-    ungroup()
-  return(norm_cons)
-}
-
-p_med_weak_over_med_cons_int_trans <- s5_int_trans_norm %>%
-  med_weak_over_med_cons() %>%
-  filter(weak > 0 & background == 's pGl4') %>%
-  ggplot(aes(as.factor(consensus), ratio_norm_over_med_cons, 
-             fill = as.factor(weak))) +
-  facet_grid(MPRA ~ .) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) +
   panel_border(colour = 'black') +
-  scale_fill_manual(name = 'number of\nweak sites', 
-                    values = cbPalette6_grad_light) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  geom_hline(yintercept = 1, alpha = 0.25, linetype = 2) +
-  geom_vline(xintercept = c(1.5:5.5), alpha = 0.25) +
-  ylab('Expression change with weak CRE\naddition to n consensus sites (a.u.)') +
-  xlab('Number of consensus sites')
+  ylab('Average expression (a.u.)') +
+  xlab('Distance to minimal promoter (bp)')
 
-save_plot('plots/p_med_weak_over_med_cons_int_trans.pdf', 
-          p_med_weak_over_med_cons_int_trans, scale = 1.3, base_width = 5.25, 
-          base_height = 3.75)
+ggsave('plots/p_s3_dist_trans_med_bin20bp.pdf', p_s3_dist_trans_bin20bp,
+       scale = 1.3, width = 5, height = 2.5, unit = 'in')
+
+p_s3_space_trans <- s3_int_trans %>%
+  filter(dist <= 108 & background != 'v chr9' & MPRA == 'episomal') %>%
+  mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
+  ggplot(aes(as.factor(spacing), ave_ratio)) +
+  facet_grid(. ~ background) +
+  geom_signif(comparisons = list(c('5', '10')), y_position = log10(3)) +
+  geom_signif(comparisons = list(c('5', '15')), y_position = log10(7)) +
+  geom_signif(comparisons = list(c('5', '20')), y_position = log10(15)) +
+  geom_boxplot(size = 0.3, position = position_dodge(1)) +
+  theme(axis.ticks.x = element_blank(), 
+        strip.background = element_rect(colour="black", fill="white")) + 
+  scale_y_log10(limits = c(0.060, 20)) +
+  annotation_logticks(sides = 'l') +
+  panel_border(colour = 'black') +
+  ylab('Average expression (a.u.)') +
+  xlab('Spacing (bp)')
+
+ggsave('plots/p_s3_space_trans_med.pdf', p_s3_space_trans, scale = 1.3,
+       width = 4, height = 2, units = 'in')
+
+
+#Compare subpool 5 between integrated and transient.....fix this
+
+p_int_trans_ave_med_rep_sp5 <- int_trans %>%
+  filter(subpool == 'subpool5') %>%
+  ggplot(aes(ave_med_ratio, ave_ratio_22)) +
+  geom_point(alpha = 0.2, size = 1) + 
+  annotation_logticks() +
+  xlab("Average integrated expression (a.u.)") +
+  ylab("Average episomal expression (a.u.)") +
+  scale_x_log10(limits = c(0.01, 20)) + 
+  scale_y_log10(limits = c(0.09, 20))
+
+ggsave('plots/p_int_med_trans_med_ave_rep_sp5.pdf', p_int_trans_ave_med_rep_sp5, 
+       scale = 1.3, width = 3, height = 2.7, units = 'in')
+
+
+#Compare subpool5 features between integrated and transient
+
+s5_int_trans <- MPRA_ave %>%
+  filter(subpool == 'subpool5') %>%
+  subpool5()
+
   
 
 #Comparison to Luciferase assays------------------------------------------------
