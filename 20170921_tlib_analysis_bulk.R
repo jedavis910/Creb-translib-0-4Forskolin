@@ -768,6 +768,68 @@ controls <-
 #v chr9 spacing overlay plots using 3 bp moving average and plot as line over 
 #original data in overlays
 
+df <- tibble(bp = seq(from = 0, to = 10, by = 1), 
+             main = seq(from = 0, to = 343, by = 34.3),
+             five = seq(from = 85.9, to = 428.9, by = 34.3),
+             ten = seq(from = 257.4, to = 600.4, by = 34.3)) %>%
+  mutate(five = if_else(five >= 360, five-360, five)) %>%
+  mutate(ten = if_else(ten >= 360, ten-360, ten)) %>%
+  mutate(main = if_else((main > 90 & main < 180), 90-(main-90), main)) %>%
+  mutate(main = if_else((main > 180 & main < 270), -(main-180), main)) %>%
+  mutate(main = if_else((main > 270 & main < 360), -(90-(main-270)), main)) %>%
+  mutate(five = if_else((five > 90 & five < 180), 90-(five-90), five)) %>%
+  mutate(five = if_else((five > 180 & five < 270), -(five-180), five)) %>%
+  mutate(five = if_else((five > 270 & five < 360), -(90-(five-270)), five)) %>%
+  mutate(ten = if_else((ten > 90 & ten < 180), 90-(ten-90), ten)) %>%
+  mutate(ten = if_else((ten > 180 & ten < 270), -(ten-180), ten)) %>%
+  mutate(ten = if_else((ten > 270 & ten < 360), -(90-(ten-270)), ten))
+
+ggplot(df, aes(bp)) +
+  geom_point(aes(y = main)) +
+  geom_line(aes(y = main)) +
+  geom_point(aes(y = five), color = 'red') +
+  geom_line(aes(y = five), color = 'red') +
+  geom_point(aes(y = ten), color = 'blue') +
+  geom_line(aes(y = ten), color = 'blue')
+
+bp <- seq(0, 10, 1)
+main <- tibble(main = sin((1/10.5*(2*pi))*bp)) 
+five <- tibble(five = sin((1/10.5*(2*pi))*bp + 1.5))
+ten <- tibble(ten = sin((1/10.5*(2*pi))*bp + 4.49))
+all <- cbind(bp, main, five, ten) %>%
+  gather(main, five, ten, key = 'CREB', value = 'y') %>%
+  ggplot(aes(bp, y, color = CREB)) +
+  geom_line()
+
+main_five <- tibble(main_five = 2*(cos(1.5/2)*sin((1/10.5*(2*pi))*bp + 1.5/2)))
+main_ten <- tibble(main_ten = 2*(cos(4.49/2)*sin((1/10.5*(2*pi))*bp + 4.49/2)))
+main_all <- cbind(bp, main_five, main_ten)  %>%
+  gather(main_five, main_ten, key = 'spacing', value = 'y') %>%
+  ggplot(aes(bp, y, color = spacing)) +
+  geom_line()
+
+
+
+
+
+
+ggplot(df2, aes(bp)) +
+  geom_point(aes(y = main)) +
+  geom_line(aes(y = main)) +
+  geom_point(aes(y = five), color = 'red') +
+  geom_line(aes(y = five), color = 'red') +
+  geom_point(aes(y = ten), color = 'blue') +
+  geom_line(aes(y = ten), color = 'blue') +
+  geom_point(aes(y = main_five), color = 'pink') +
+  geom_line(aes(y = main_five), color = 'pink') +
+  geom_point(aes(y = main_ten), color = 'purple') +
+  geom_line(aes(y = main_ten), color = 'purple')
+
+
+
+
+
+
 library(caTools)
 
 moveavg_dist3 <- function(df) {
@@ -786,7 +848,7 @@ s3_tidy_moveavg3 <- s3_tidy %>%
   select(-dist1, -ave_ratio_221)
   
 p_subpool3_spa_4_vchr9_5_10 <- s3_tidy_moveavg3 %>%
-  filter(background == 'v chr9' & dist < 124 & (spacing == 5 | spacing == 10)) %>%
+  filter(background == 'v chr9' & dist < 127 & (spacing == 5 | spacing == 10)) %>%
   ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
   geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
@@ -801,12 +863,12 @@ p_subpool3_spa_4_vchr9_5_10 <- s3_tidy_moveavg3 %>%
   annotation_logticks(sides = 'l') +
   background_grid(major = 'x', minor = 'none') +
   scale_x_continuous("Distance to minimal promoter (bp)", 
-                     breaks = seq(from = 64, to = 124, by = 10)) +
+                     breaks = seq(from = 66, to = 126, by = 10)) +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
 p_subpool3_spa_4_vchr9_5_15 <- s3_tidy_moveavg3 %>%
-  filter(background == 'v chr9' & dist < 124 & (spacing == 5 | spacing == 15)) %>%
+  filter(background == 'v chr9' & dist < 127 & (spacing == 5 | spacing == 15)) %>%
   ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
   geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
@@ -822,12 +884,12 @@ p_subpool3_spa_4_vchr9_5_15 <- s3_tidy_moveavg3 %>%
   annotation_logticks(sides = 'l') +
   background_grid(major = 'x', minor = 'none') +
   scale_x_continuous("Distance to minimal promoter (bp)", 
-                     breaks = seq(from = 64, to = 124, by = 10)) +
+                     breaks = seq(from = 66, to = 126, by = 10)) +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
 p_subpool3_spa_4_vchr9_10_20 <- s3_tidy_moveavg3 %>%
-  filter(background == 'v chr9' & dist < 124 & (spacing == 10 | spacing == 20)) %>%
+  filter(background == 'v chr9' & dist < 127 & (spacing == 10 | spacing == 20)) %>%
   ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
   geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
@@ -843,7 +905,7 @@ p_subpool3_spa_4_vchr9_10_20 <- s3_tidy_moveavg3 %>%
   annotation_logticks(sides = 'l') +
   background_grid(major = 'x', minor = 'none') +
   scale_x_continuous("Distance to minimal promoter (bp)", 
-                     breaks = seq(from = 64, to = 124, by = 10)) +
+                     breaks = seq(from = 66, to = 126, by = 10)) +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
@@ -1646,6 +1708,26 @@ p_space_dist_int_trans <- s3_int_trans_moveavg3 %>%
 ggsave('plots/p_space_dist_int_trans.pdf', p_space_dist_int_trans, 
           scale = 1.3, width = 8.5, height = 6.5, units = 'in')
 
+p_space15_dist_int_trans <- s3_int_trans_moveavg3 %>%
+  filter(background != 'v chr9' & spacing == 15) %>%
+  mutate(background = factor(background, 
+                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+  ggplot(aes(x = dist, y = ave_ratio, color = MPRA)) + 
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_line(aes(y = ave_3), size = 0.4) +
+  facet_grid(background ~ .) +
+  scale_color_manual(values = c('#3CBB75FF', 'gray35')) +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  scale_y_log10() +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'x', colour.major = 'grey90',
+                  colour.minor = 'grey95') +
+  scale_x_continuous("Distance to minimal promoter (bp)", 
+                     breaks = seq(from = 70, to = 190, by = 20)) +
+  theme(legend.position = 'right',
+        strip.background = element_rect(colour="black", fill="white"))
+
 
 #distance effects in episomal and integrated
 
@@ -2019,6 +2101,11 @@ s5_int_trans <- MPRA_ave %>%
   filter(subpool == 'subpool5') %>%
   subpool5()
 
+test <- s5_int_trans %>%
+  filter(consensus == 1 & (weak == 0 | weak == 5)) %>%
+  group_by(background, MPRA, consensus, weak) %>%
+  summarize(median(ave_ratio))
+
 pred_resid <- function(df1, x) {
   df2 <- df1 %>%
     add_predictions(x)
@@ -2144,9 +2231,12 @@ ind_site_ind_back_anova_epi <- tidy(anova(ind_site_ind_back_epi)) %>%
 ind_site_ind_back_p_r_epi <- pred_resid(filter(subpool5_ncw, MPRA == 'episomal'), 
                                     ind_site_ind_back_epi)
 
+lessthan1_2color <- c('red', 'red', 'black', 'black', 'black', 'black', 'black')
+
 p_ind_site_ind_back_epi <- ggplot(ind_site_ind_back_p_r_epi, 
                               aes(ave_ratio, pred)) +
-  geom_point(alpha = 0.2, size = 1) +
+  geom_point(alpha = 0.2, size = 1, show.legend = FALSE) +
+  scale_color_manual(values = lessthan1_2color) +
   scale_x_continuous(name = 'Measured expression', breaks = c(-1:1),
                      limits = c(-1.5, 1.8)) + 
   scale_y_continuous(name = 'Predicted expression', breaks = c(-1:1),
@@ -2207,7 +2297,8 @@ ind_site_ind_back_p_r_int <- pred_resid(filter(subpool5_ncw, MPRA == 'integrated
 
 p_ind_site_ind_back_int <- ggplot(ind_site_ind_back_p_r_int, 
                                   aes(ave_ratio, pred)) +
-  geom_point(alpha = 0.2, size = 1) +
+  geom_point(alpha = 0.2, size = 1, show.legend = FALSE) +
+  scale_color_manual(values = lessthan1_2color) +
   scale_x_continuous(name = 'Measured expression', breaks = c(-2:1),
                      limits = c(-2.1, 1.8)) + 
   scale_y_continuous(name = 'Predicted expression', breaks = c(-2:1),
@@ -2258,6 +2349,15 @@ ggsave('plots/p_ind_site_ind_back_anova_int.pdf', p_ind_site_ind_back_anova_int,
 cons_int_epi_lm <- lm(ave_ratio_22 ~ ave_med_ratio, 
                       data = var_log10(filter(s5_int_trans, 
                                               site_combo == 'consensus')))
+
+cons_pearsons_log10 <- s5_int_trans %>%
+  var_log10() %>%
+  filter(site_combo == 'consensus')
+
+cons_pearsons <- round(cor(cons_pearsons_log10$ave_med_ratio, 
+                           cons_pearsons_log10$ave_ratio_22, 
+                           use = "pairwise.complete.obs", 
+                           method = "pearson"), 2)
 
 s5_int_trans_cons_lm <- pred_resid(var_log10(s5_int_trans), cons_int_epi_lm)
 
