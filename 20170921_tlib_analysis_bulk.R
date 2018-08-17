@@ -577,6 +577,68 @@ log10_trans_back_norm_rep_0_22 <- var_log10(trans_back_norm_rep_0_22)
 
 #Make untidy data with expression and concentration as variables
 
+var_conc_exp_nonnorm <- function(df) {
+  df <- df %>%
+    ungroup() %>%
+    filter(subpool != 'control') %>%
+    mutate(
+      name = gsub('Smith R. Vista chr9:83712599-83712766', 'v chr9', name),
+      name = gsub('Vista Chr5:88673410-88674494', 'v chr5', name), 
+      name = gsub('scramble pGL4.29 Promega 1-63 \\+ 1-87', 's pGl4', name)
+      ) %>%
+      mutate(background = name) %>%
+      mutate(background = str_sub(background, 
+                                  nchar(background)-5, 
+                                  nchar(background)))
+  df_0 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
+    mutate(ave_ratio = (ratio_0A + ratio_0B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 0)
+  df_2_5 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_2_5A + barcodes_RNA_2_5B)/2) %>%
+    mutate(ave_ratio = (ratio_2_5A + ratio_2_5B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 2^-5)
+  df_2_4 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_2_4A + barcodes_RNA_2_4B)/2) %>%
+    mutate(ave_ratio = (ratio_2_4A + ratio_2_4B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 2^-4)
+  df_2_3 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_2_3A + barcodes_RNA_2_3B)/2) %>%
+    mutate(ave_ratio = (ratio_2_3A + ratio_2_3B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 2^-3)
+  df_2_2 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_2_2A + barcodes_RNA_2_2B)/2) %>%
+    mutate(ave_ratio = (ratio_2_2A + ratio_2_2B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 2^-2)
+  df_2_1 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_2_1A + barcodes_RNA_2_1B)/2) %>%
+    mutate(ave_ratio = (ratio_2_1A + ratio_2_1B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 2^-1)
+  df_20 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_20A + barcodes_RNA_20B)/2) %>%
+    mutate(ave_ratio = (ratio_20A + ratio_20B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 2^0)
+  df_22 <- df %>%
+    mutate(ave_barcode = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+    mutate(ave_ratio = (ratio_22A + ratio_22B)/2) %>%
+    select(subpool, name, most_common, background, ave_barcode, ave_ratio) %>%
+    mutate(conc = 2^2)
+  df_0_22 <- rbind(df_0, df_2_5, df_2_4, df_2_3, df_2_2, df_2_1, df_20, df_22)
+  return(df_0_22)
+}
+
+trans_conc <- var_conc_exp_nonnorm(rep_0_22_A_B)
+
+
+#Make untidy data with background-normalized data
+
 var_conc_exp <- function(df) {
   df_0 <- df %>%
     mutate(ave_barcode_0 = (barcodes_RNA_0A + barcodes_RNA_0B)/2) %>%
@@ -765,8 +827,7 @@ controls <-
 
 #Plot subpool3 expression features----------------------------------------------
 
-#v chr9 spacing overlay plots using 3 bp moving average and plot as line over 
-#original data in overlays
+#Rotation about a dna with 5 and 10 bp spacing
 
 df <- tibble(bp = seq(from = 0, to = 10, by = 1), 
              main = seq(from = 0, to = 343, by = 34.3),
@@ -809,26 +870,8 @@ main_all <- cbind(bp, main_five, main_ten)  %>%
   geom_line()
 
 
-
-
-
-
-ggplot(df2, aes(bp)) +
-  geom_point(aes(y = main)) +
-  geom_line(aes(y = main)) +
-  geom_point(aes(y = five), color = 'red') +
-  geom_line(aes(y = five), color = 'red') +
-  geom_point(aes(y = ten), color = 'blue') +
-  geom_line(aes(y = ten), color = 'blue') +
-  geom_point(aes(y = main_five), color = 'pink') +
-  geom_line(aes(y = main_five), color = 'pink') +
-  geom_point(aes(y = main_ten), color = 'purple') +
-  geom_line(aes(y = main_ten), color = 'purple')
-
-
-
-
-
+#v chr9 spacing overlay plots using 3 bp moving average and plot as line over 
+#original data in overlays
 
 library(caTools)
 
@@ -1682,6 +1725,9 @@ s3_int_trans_moveavg3 <- s3_int_trans %>%
   unnest() %>%
   select(-dist1, -ave_ratio1)
 
+test <- s3_int_trans_moveavg3 %>%
+  filter(background == 's pGl4' & MPRA == 'episomal' & spacing == 20)
+
 
 #Subpool3 despite noise seems to have same distance effects across background
 
@@ -1840,6 +1886,10 @@ p_subpool3_spa_spgl4_trans_5_10 <- s3_int_trans_moveavg3 %>%
   ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
   geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
+  geom_vline(xintercept = c(94, 104), color = 'gray20', linetype = 2, 
+             alpha = 0.5) +
+  geom_vline(xintercept = c(99, 109.5), color = 'dodgerblue3', linetype = 2, 
+             alpha = 0.5) +
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
@@ -1856,6 +1906,8 @@ p_subpool3_spa_spgl4_trans_5_15 <- s3_int_trans_moveavg3 %>%
   ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
   geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
+  geom_vline(xintercept = c(94, 104), color = 'gray20', linetype = 2, 
+             alpha = 0.5) +
   scale_color_manual(values = c('gray20', 'firebrick3'), 
                      name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
@@ -1873,6 +1925,8 @@ p_subpool3_spa_spgl4_trans_10_20 <- s3_int_trans_moveavg3 %>%
   ggplot(aes(x = dist, y = ave_ratio, color = as.factor(spacing))) +
   geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
+  geom_vline(xintercept = c(99, 109.5), color = 'dodgerblue3', linetype = 2, 
+             alpha = 0.5) +
   scale_color_manual(values = c('dodgerblue3', '#55C667FF'),
                      name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
@@ -2100,11 +2154,6 @@ ggsave('plots/p_int_trans_ave_med_rep_sp5.pdf', p_int_trans_ave_med_rep_sp5,
 s5_int_trans <- MPRA_ave %>%
   filter(subpool == 'subpool5') %>%
   subpool5()
-
-test <- s5_int_trans %>%
-  filter(consensus == 1 & (weak == 0 | weak == 5)) %>%
-  group_by(background, MPRA, consensus, weak) %>%
-  summarize(median(ave_ratio))
 
 pred_resid <- function(df1, x) {
   df2 <- df1 %>%
@@ -2394,6 +2443,60 @@ p_s5_int_trans_site_combo_resid <- s5_int_trans_cons_lm %>%
 ggsave('plots/p_s5_int_trans_site_combo_resid.pdf', 
        p_s5_int_trans_site_combo_resid, scale = 1.3, width = 4, height = 2.25,
        units = 'in')
+
+
+#Look at competition between sites as forskolin decreases
+
+MPRA_ave_allconc <- int_rep_1_2 %>%
+  select(-med_ratio_br1, -med_ratio_br2, -mad_br1, -mad_br2, -mad_over_med_br1,
+         -mad_over_med_br2, -barcodes_DNA_br1, -barcodes_DNA_br2) %>%
+  ungroup() %>%
+  filter(subpool != 'control') %>%
+  mutate(
+    name = gsub('Smith R. Vista chr9:83712599-83712766', 'v chr9', name),
+    name = gsub('Vista Chr5:88673410-88674494', 'v chr5', name),
+    name = gsub('scramble pGL4.29 Promega 1-63 \\+ 1-87', 's pGl4', name)
+  ) %>%
+  mutate(background = name) %>%
+  mutate(background = str_sub(background, 
+                              nchar(background)-5,
+                              nchar(background))) %>%
+  inner_join(trans_conc, 
+             by = c('subpool', 'name', 'most_common', 'background')) %>%
+  mutate(integrated = (barcodes_RNA_br1 + barcodes_RNA_br2)/2) %>%
+  rename(episomal = ave_barcode) %>%
+  select(-barcodes_RNA_br1, -barcodes_RNA_br2) %>%
+  gather(integrated, episomal, key = 'MPRA', value = 'barcodes') %>%
+  mutate(integrated = ave_med_ratio) %>%
+  mutate(episomal = ave_ratio) %>%
+  rename(ave_sum_ratio = ave_ratio) %>%
+  gather(integrated, episomal, key = 'MPRA2', value = 'ave_ratio') %>%
+  filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'episomal' & MPRA2 == 'episomal')) %>%
+  select(-MPRA2)
+
+subpool5(MPRA_ave_allconc) %>%
+  filter(site_combo == 'consensus') %>%
+  filter(conc != 0) %>%
+  ggplot(aes(ave_med_ratio, ave_sum_ratio)) +
+  geom_point(alpha = 0.2) +
+  facet_wrap(~ conc) +
+  scale_x_log10(name = 'integrated expression') +
+  scale_y_log10(name = 'transient expression') + 
+  panel_border(colour = 'black') +
+  annotation_logticks(sides = 'bl')
+
+cons_int_epi_lm_conc <- function(df) {
+  df <- df %>%
+    filter(subpool == 'subpool5') %>%
+    subpool5() %>%
+    filter(site_combo == 'consensus')
+  fit <- lm(ave_sum_ratio ~ ave_med_ratio, data = df)
+  return(fit)
+}
+
+
+
+
 
 
 #Comparison to integrated with median episomal----------------------------------
