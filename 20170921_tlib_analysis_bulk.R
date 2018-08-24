@@ -858,16 +858,19 @@ main <- tibble(main = sin((1/10.5*(2*pi))*bp))
 five <- tibble(five = sin((1/10.5*(2*pi))*bp + 1.5))
 ten <- tibble(ten = sin((1/10.5*(2*pi))*bp + 4.49))
 all <- cbind(bp, main, five, ten) %>%
-  gather(main, five, ten, key = 'CREB', value = 'y') %>%
-  ggplot(aes(bp, y, color = CREB)) +
+  gather(main, five, ten, key = 'CREB', value = 'y')
+
+ggplot(all, aes(bp, y, color = CREB)) +
   geom_line()
 
 main_five <- tibble(main_five = 2*(cos(1.5/2)*sin((1/10.5*(2*pi))*bp + 1.5/2)))
 main_ten <- tibble(main_ten = 2*(cos(4.49/2)*sin((1/10.5*(2*pi))*bp + 4.49/2)))
 main_all <- cbind(bp, main_five, main_ten)  %>%
-  gather(main_five, main_ten, key = 'spacing', value = 'y') %>%
-  ggplot(aes(bp, y, color = spacing)) +
-  geom_line()
+  gather(main_five, main_ten, key = 'spacing', value = 'y')
+
+ggplot(main_all, aes(bp, y, color = spacing)) +
+  geom_line() + 
+  geom_point()
 
 
 #v chr9 spacing overlay plots using 3 bp moving average and plot as line over 
@@ -889,6 +892,9 @@ s3_tidy_moveavg3 <- s3_tidy %>%
   mutate(ave_3 = map(.$data, moveavg_dist3)) %>%
   unnest() %>%
   select(-dist1, -ave_ratio_221)
+
+test <- s3_tidy_moveavg3 %>%
+  filter(background == 'v chr9' & (spacing == 5 | spacing == 10))
   
 p_subpool3_spa_4_vchr9_5_10 <- s3_tidy_moveavg3 %>%
   filter(background == 'v chr9' & dist < 127 & (spacing == 5 | spacing == 10)) %>%
@@ -1146,134 +1152,143 @@ test <- s5_binom %>%
 #Induction analysis-------------------------------------------------------------
 
 s5_typecount_siteloc <- function(df) {
+  df <- df %>%
+    mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2)
   csite1 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site1, site1 == 'consensus') %>%
     filter(site1 == 'consensus') %>%
-    mutate(csite = '-127') %>%
+    mutate(csite = '-191') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, csite, induction) %>%
+           site5, site6, csite, ave_ratio_22) %>%
     ungroup()
   csite2 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site2, site2 == 'consensus') %>%
     filter(site2 == 'consensus') %>%
-    mutate(csite = '-102') %>%
+    mutate(csite = '-166') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, csite, induction) %>%
+           site5, site6, csite, ave_ratio_22) %>%
     ungroup()
   csite3 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site3, site3 == 'consensus') %>%
     filter(site3 == 'consensus') %>%
-    mutate(csite = '-77') %>%
+    mutate(csite = '-141') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, csite, induction) %>%
+           site5, site6, csite, ave_ratio_22) %>%
     ungroup()
   csite4 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site4, site4 == 'consensus') %>%
     filter(site4 == 'consensus') %>%
-    mutate(csite = '-52') %>%
+    mutate(csite = '-116') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, csite, induction) %>%
+           site5, site6, csite, ave_ratio_22) %>%
     ungroup()
   csite5 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site5, site5 == 'consensus') %>%
     filter(site5 == 'consensus') %>%
-    mutate(csite = '-27') %>%
+    mutate(csite = '-91') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, csite, induction) %>%
+           site5, site6, csite, ave_ratio_22) %>%
     ungroup()
   csite6 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site6, site6 == 'consensus') %>%
     filter(site6 == 'consensus') %>%
-    mutate(csite = '-2') %>%
+    mutate(csite = '-66') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, csite, induction) %>%
+           site5, site6, csite, ave_ratio_22) %>%
     ungroup()
   nocsites <- df %>%
     filter(consensus == 0) %>%
     mutate(csite = 'none') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, csite, induction)
+           site5, site6, csite, ave_ratio_22)
   csites <- rbind(csite1, csite2, csite3, csite4, csite5, csite6, nocsites)
   wsite1 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site1, site1 == 'weak') %>%
     filter(site1 == 'weak') %>%
-    mutate(wsite = -127) %>%
+    mutate(wsite = -191) %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, wsite, induction) %>%
+           site5, site6, wsite, ave_ratio_22) %>%
     ungroup()
   wsite2 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site2, site2 == 'weak') %>%
     filter(site2 == 'weak') %>%
-    mutate(wsite = -102) %>%
+    mutate(wsite = -166) %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, wsite, induction) %>%
+           site5, site6, wsite, ave_ratio_22) %>%
     ungroup()
   wsite3 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site3, site3 == 'weak') %>%
     filter(site3 == 'weak') %>%
-    mutate(wsite = -77) %>%
+    mutate(wsite = -141) %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, wsite, induction) %>%
+           site5, site6, wsite, ave_ratio_22) %>%
     ungroup()
   wsite4 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site4, site4 == 'weak') %>%
     filter(site4 == 'weak') %>%
-    mutate(wsite = -52) %>%
+    mutate(wsite = -116) %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, wsite, induction) %>%
+           site5, site6, wsite, ave_ratio_22) %>%
     ungroup()
   wsite5 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site5, site5 == 'weak') %>%
     filter(site5 == 'weak') %>%
-    mutate(wsite = -27) %>%
+    mutate(wsite = -91) %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, wsite, induction) %>%
+           site5, site6, wsite, ave_ratio_22) %>%
     ungroup()
   wsite6 <- df %>%
     group_by(most_common, background, consensus, weak, 
-             site1, site2, site3, site4, site5, site6, induction) %>%
+             site1, site2, site3, site4, site5, site6, ave_ratio_22) %>%
     count(site6, site6 == 'weak') %>%
     filter(site6 == 'weak') %>%
-    mutate(wsite = -2) %>%
+    mutate(wsite = -66) %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, wsite, induction) %>%
+           site5, site6, wsite, ave_ratio_22) %>%
     ungroup()
   nowsites <- df %>%
     filter(weak == 0) %>%
     mutate(wsite = 'none') %>%
     select(most_common, background, weak, consensus, site1, site2, site3, site4, 
-           site5, site6, wsite, induction)
+           site5, site6, wsite, ave_ratio_22)
   wsites <- rbind(wsite1, wsite2, wsite3, wsite4, wsite5, wsite6, nowsites)
   c_w_sites <- inner_join(csites, wsites,
                           by = c('most_common', 'background', 'weak', 
                                  'consensus', 'site1', 'site2', 'site3', 
-                                 'site4', 'site5', 'site6', 'induction'))
+                                 'site4', 'site5', 'site6', 'ave_ratio_22'))
   return(c_w_sites)
 }
 
-s5_cons_weak_csite_wsite_ind <- s5_typecount_siteloc(s5_tidy)
+s5_cons_weak_csite_wsite_ind <- s5_typecount_siteloc(s5_tidy) %>%
+  mutate(csite = factor(csite, levels = c('none', '-191', '-166', '-141', '-116',
+                                          '-91', '-66'))) %>%
+  filter(weak == 0, consensus == 1) %>%
+  ggplot(aes(csite, ave_ratio_22)) +
+  geom_boxplot() +
+  scale_y_log10() +
+  annotation_logticks(sides = 'l')
 
 test <- s5_cons_weak_csite_wsite_ind %>%
   filter(background == 'v chr9') %>%
@@ -2280,10 +2295,11 @@ ind_site_ind_back_anova_epi <- tidy(anova(ind_site_ind_back_epi)) %>%
 ind_site_ind_back_p_r_epi <- pred_resid(filter(subpool5_ncw, MPRA == 'episomal'), 
                                     ind_site_ind_back_epi)
 
-lessthan1_2color <- c('red', 'red', 'black', 'black', 'black', 'black', 'black')
+lessthan1_2color <- c('red', 'black', 'black', 'black', 'black', 'black', 'black')
 
 p_ind_site_ind_back_epi <- ggplot(ind_site_ind_back_p_r_epi, 
-                              aes(ave_ratio, pred)) +
+                              aes(ave_ratio, pred, 
+                                  color = as.factor(consensus))) +
   geom_point(alpha = 0.2, size = 1, show.legend = FALSE) +
   scale_color_manual(values = lessthan1_2color) +
   scale_x_continuous(name = 'Measured expression', breaks = c(-1:1),
@@ -2330,6 +2346,7 @@ ggsave('plots/p_ind_site_ind_back_anova_epi.pdf', p_ind_site_ind_back_anova_epi,
        scale = 1.3, width = 2.5, height = 2.5)
 
 
+
 ind_site_ind_back_int <- subpool5_ncw %>%
   filter(MPRA == 'integrated') %>%
   ind_site_ind_back()
@@ -2345,7 +2362,8 @@ ind_site_ind_back_p_r_int <- pred_resid(filter(subpool5_ncw, MPRA == 'integrated
                                         ind_site_ind_back_int)
 
 p_ind_site_ind_back_int <- ggplot(ind_site_ind_back_p_r_int, 
-                                  aes(ave_ratio, pred)) +
+                                  aes(ave_ratio, pred, 
+                                      color = as.factor(consensus))) +
   geom_point(alpha = 0.2, size = 1, show.legend = FALSE) +
   scale_color_manual(values = lessthan1_2color) +
   scale_x_continuous(name = 'Measured expression', breaks = c(-2:1),
@@ -2461,23 +2479,23 @@ MPRA_ave_allconc <- int_rep_1_2 %>%
   mutate(background = str_sub(background, 
                               nchar(background)-5,
                               nchar(background))) %>%
-  inner_join(trans_conc, 
+  inner_join(trans_back_norm_conc, 
              by = c('subpool', 'name', 'most_common', 'background')) %>%
   mutate(integrated = (barcodes_RNA_br1 + barcodes_RNA_br2)/2) %>%
   rename(episomal = ave_barcode) %>%
   select(-barcodes_RNA_br1, -barcodes_RNA_br2) %>%
   gather(integrated, episomal, key = 'MPRA', value = 'barcodes') %>%
   mutate(integrated = ave_med_ratio) %>%
-  mutate(episomal = ave_ratio) %>%
-  rename(ave_sum_ratio = ave_ratio) %>%
+  mutate(episomal = ave_ratio_norm) %>%
+  rename(ave_sum_ratio = ave_ratio_norm) %>%
   gather(integrated, episomal, key = 'MPRA2', value = 'ave_ratio') %>%
   filter((MPRA == 'integrated' & MPRA2 == 'integrated') | (MPRA == 'episomal' & MPRA2 == 'episomal')) %>%
   select(-MPRA2)
 
 subpool5(MPRA_ave_allconc) %>%
   filter(site_combo == 'consensus') %>%
-  filter(conc != 0) %>%
-  ggplot(aes(ave_med_ratio, ave_sum_ratio)) +
+  ggplot(aes(ave_med_ratio, ave_sum_ratio, color = consensus)) +
+  scale_color_viridis() +
   geom_point(alpha = 0.2) +
   facet_wrap(~ conc) +
   scale_x_log10(name = 'integrated expression') +
@@ -2495,6 +2513,67 @@ cons_int_epi_lm_conc <- function(df) {
 }
 
 
+#fit a linear model to other concentrations in episomal
+
+subpool5_ncw_allconc <- subpool5(MPRA_ave_allconc) %>%
+  mutate(site1 = gsub('nosite', 'anosite', site1)) %>%
+  mutate(site2 = gsub('nosite', 'anosite', site2)) %>%
+  mutate(site3 = gsub('nosite', 'anosite', site3)) %>%
+  mutate(site4 = gsub('nosite', 'anosite', site4)) %>%
+  mutate(site5 = gsub('nosite', 'anosite', site5)) %>%
+  mutate(site6 = gsub('nosite', 'anosite', site6)) %>%
+  mutate(background = gsub('v chr9', 'av chr9', background)) %>%
+  mutate(ave_ratio = log10(ave_ratio)) %>%
+  filter(MPRA == 'episomal' & conc == 2^-4)
+  
+ind_site_ind_back_epi_2_1 <- subpool5_ncw_allconc %>%
+  ind_site_ind_back()
+
+ind_site_ind_back_sum_epi_2_1 <- ind_site_ind_back_sumtidy(ind_site_ind_back_epi_2_1)
+
+ind_site_ind_back_anova_epi_2_1 <- tidy(anova(ind_site_ind_back_epi_2_1)) %>%
+  mutate(term_fctr = factor(term, levels = term)) %>%
+  mutate(total_sumsq = sum(sumsq)) %>%
+  mutate(per_sumsq = sumsq/total_sumsq)
+
+ind_site_ind_back_p_r_epi_2_1 <- pred_resid(subpool5_ncw_allconc, 
+                                            ind_site_ind_back_epi_2_1)
+
+ggplot(ind_site_ind_back_p_r_epi_2_1, 
+       aes(ave_ratio, pred, color = as.factor(consensus))) +
+  geom_point(alpha = 0.2, size = 1, show.legend = FALSE) +
+  scale_color_manual(values = lessthan1_2color) +
+  scale_x_continuous(name = 'Measured expression') + 
+  scale_y_continuous(name = 'Predicted expression') +
+  annotation_logticks(sides = 'bl') +
+  annotate("text", x = -0.5, y = 1, 
+           label = paste('r =', 
+                         round(cor(ind_site_ind_back_p_r_epi_2_1$pred,
+                                   ind_site_ind_back_p_r_epi_2_1$ave_ratio,
+                                   use = "pairwise.complete.obs", 
+                                   method = "pearson"), 2)))
+
+ind_site_ind_back_sum_epi_2_1 %>%
+  mutate(type = factor(type, 
+                       levels = c('v chr9', 's pGl4', 'v chr5', 'consensus', 
+                                  'weak'))) %>%
+  ggplot(aes(variable, estimate, fill = type)) + 
+  geom_bar(stat = 'identity', position = 'dodge', color = 'gray60', 
+           size = 0.3) + 
+  geom_hline(yintercept = 0, size = 0.25) +
+  scale_x_discrete(position = 'bottom') + 
+  scale_fill_viridis(discrete = TRUE) + 
+  theme(axis.ticks.x = element_blank(), legend.position = 'top',
+        axis.text.x = element_text(angle = 45, hjust = 1), 
+        axis.title.x = element_blank()) +
+  ylab('Weight')
+
+ind_site_ind_back_anova_epi_2_1 %>%
+  ggplot(aes(term_fctr, per_sumsq)) + 
+  geom_bar(stat = 'identity') + 
+  ylab('Proportion of\nvariance explained') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        axis.ticks.x = element_blank(), axis.title.x = element_blank())
 
 
 
@@ -2862,6 +2941,38 @@ ggsave('plots/p_s5_int_med_trans_med_site_combo_resid.pdf',
        units = 'in')
 
 
+#Titration range between genomic and episomal using luciferase------------------
+
+#This csv file was transformed to make R plotting more straightforward, 
+#replicates between genomic and episomal assays are not the same
+
+titration_luc <- read_csv("../../../Plate Reader/170726_trans_int_R.csv") %>%
+  mutate(RLU_epi = luciferase_epi/renilla_epi) %>%
+  mutate(forskolin = log2(forskolin))
+
+p_gen_titration_luc <- titration_luc %>%
+  ggplot(aes(forskolin, luciferase_gen)) +
+  geom_point() +
+  geom_smooth() +
+  ylab('bulk luminescence (a.u.)') +
+  scale_x_continuous(breaks = (-2:5), 'log2 forskolin (µM)') +
+  annotation_logticks(sides = 'b')
+
+p_epi_titration_luc <- titration_luc %>%
+  ggplot(aes(forskolin, RLU_epi)) +
+  geom_point() +
+  geom_smooth() +
+  ylab('bulk relative\nluminescence (a.u.)') +
+  scale_x_continuous(breaks = (-2:5), 'log2 forskolin (µM)') +
+  annotation_logticks(sides = 'b')
+
+ggsave('plots/p_gen_titration_luc.pdf', p_gen_titration_luc, scale = 1.3,
+       width = 4.5, height = 2.5, units = 'in')
+
+ggsave('plots/p_epi_titration_luc.pdf', p_epi_titration_luc, scale = 1.3,
+       width = 4.5, height = 2.5, units = 'in')
+
+
 #Comparison to Luciferase assays------------------------------------------------
 
 #Since using background-normalized reads to account for read stealing. Also, 
@@ -3122,32 +3233,40 @@ trans_back_0_norm_conc <- trans_back_norm_pc_spGl4 %>%
   mutate(ave_ratio_0_norm = ave_ratio_0_norm - ave_ratio_0_norm) %>%
   var_conc_exp()
 
+trans_back_norm_pc_spGl4_conc <- trans_back_norm_pc_spGl4_conc %>%
+  mutate(conc = if_else(conc == 0,
+                        2^-7,
+                        conc)) %>%
+  mutate(conc = log2(conc))
+
 #plots of titration overall with 1 control (duplicated pGl4, original does not
 #have high expression)
 
-p_titr_pc_back <- ggplot(trans_back_0_norm_conc, aes(conc, ave_ratio_norm)) +
+p_titr_pc_back <- trans_back_norm_pc_spGl4_conc %>%
+  ggplot(aes(conc, ave_ratio_norm)) +
   geom_line(aes(group = name), alpha = 0.1) +
-  geom_point(data = filter(trans_back_0_norm_conc, 
+  geom_point(data = filter(trans_back_norm_pc_spGl4_conc, 
                            startsWith(name, 
                                       'subpool5_no_site_no_site_no_site_no_site_no_site_no_site')),
              color = 'darkgoldenrod1', shape = 19, stroke = 1.25) +
-  geom_line(data = filter(trans_back_0_norm_conc, 
+  geom_line(data = filter(trans_back_norm_pc_spGl4_conc, 
                           startsWith(name, 
                                      'subpool5_no_site_no_site_no_site_no_site_no_site_no_site')),
             color = 'darkgoldenrod1', size = 1.25) +
-  geom_point(data = filter(trans_back_0_norm_conc, 
+  geom_point(data = filter(trans_back_norm_pc_spGl4_conc, 
                            startsWith(name, 
                                       'pGL4.29 Promega 1-63 + 1-87')),
              color = 'firebrick2', shape = 19, stroke = 1.25) +
-  geom_line(data = filter(trans_back_0_norm_conc, 
+  geom_line(data = filter(trans_back_norm_pc_spGl4_conc, 
                           startsWith(name, 
                                      'pGL4.29 Promega 1-63 + 1-87')),
             color = 'firebrick2', size = 1.25) +
   ylab('Average normalized\nexpression (a.u.)') +
-  xlab('Forskolin concentration (µM)')
+  annotation_logticks(sides = 'b') +
+  scale_x_continuous(breaks = (-7:2), 'log2 forskolin (µM)')
 
 save_plot('plots/p_titr_pc_back.pdf', p_titr_pc_back, scale = 1.3, 
-          base_width = 3.75, base_height = 2.5)
+          base_width = 4.5, base_height = 2.5)
 
 
 #Fitting nested data
