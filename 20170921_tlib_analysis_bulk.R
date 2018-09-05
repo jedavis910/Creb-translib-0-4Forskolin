@@ -892,9 +892,6 @@ s3_tidy_moveavg3 <- s3_tidy %>%
   mutate(ave_3 = map(.$data, moveavg_dist3)) %>%
   unnest() %>%
   select(-dist1, -ave_ratio_221)
-
-test <- s3_tidy_moveavg3 %>%
-  filter(background == 'v chr9' & (spacing == 5 | spacing == 10))
   
 p_subpool3_spa_4_vchr9_5_10 <- s3_tidy_moveavg3 %>%
   filter(background == 'v chr9' & dist < 127 & (spacing == 5 | spacing == 10)) %>%
@@ -965,6 +962,49 @@ ggsave('plots/p_subpool3_spa_4_vchr9_5_15.pdf', p_subpool3_spa_4_vchr9_5_15,
        scale = 1.3, height = 1.65, width = 4.8, units = 'in')
 
 ggsave('plots/p_subpool3_spa_4_vchr9_10_20.pdf', p_subpool3_spa_4_vchr9_10_20, 
+       scale = 1.3, height = 1.65, width = 4.8, units = 'in')
+
+
+p_subpool3_spa_4_vchr9_5 <- s3_tidy_moveavg3 %>%
+  filter(background == 'v chr9' & dist < 127 & (spacing == 5)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = c(78, 88.5), color = 'gray20', linetype = 2, 
+             alpha = 0.5) +
+  scale_y_log10(limits = c(0.1, 2)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance to minimal promoter (bp)", 
+                     breaks = seq(from = 66, to = 126, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+p_subpool3_spa_4_vchr9_10 <- s3_tidy_moveavg3 %>%
+  filter(background == 'v chr9' & dist < 127 & (spacing == 10)) %>%
+  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  scale_color_manual(values = c('dodgerblue3'), name = 'spacing (bp)') +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  geom_vline(xintercept = c(82.5, 92.5), color = 'dodgerblue3', linetype = 2, 
+             alpha = 0.5) +
+  scale_y_log10(limits = c(0.1, 2)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance to minimal promoter (bp)", 
+                     breaks = seq(from = 66, to = 126, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
+
+ggsave('plots/p_subpool3_spa_4_vchr9_5.pdf', p_subpool3_spa_4_vchr9_5, 
+       scale = 1.3, height = 1.65, width = 4.8, units = 'in')
+
+ggsave('plots/p_subpool3_spa_4_vchr9_10.pdf', p_subpool3_spa_4_vchr9_10, 
        scale = 1.3, height = 1.65, width = 4.8, units = 'in')
 
 
@@ -1723,6 +1763,20 @@ s3_int_trans <- MPRA_ave %>%
   filter(subpool == 'subpool3') %>%
   subpool3()
 
+s3_int_trans_epivchr9 <- s3_tidy %>%
+  filter(background == 'v chr9') %>%
+  select(spacing, dist, background, ratio_22A, ratio_22B, barcodes_RNA_22A,
+         barcodes_RNA_22B) %>%
+  mutate(ave_ratio_22 = (ratio_22A + ratio_22B)/2) %>%
+  mutate(ave_ratio = ave_ratio_22) %>%
+  mutate(barcodes = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
+  select(-barcodes_RNA_22A, -barcodes_RNA_22B) %>%
+  mutate(MPRA = 'episomal') %>%
+  mutate(med_ratio_br1 = NA) %>%
+  mutate(med_ratio_br2 = NA) %>%
+  mutate(ave_med_ratio = NA) %>%
+  rbind(filter(s3_int_trans, background != 'v chr9'))
+
 
 library(caTools)
 
@@ -1731,7 +1785,7 @@ int_epi_moveavg_dist3 <- function(df) {
     mutate(ave_3 = runmean(ave_ratio, 3, alg = 'R', endrule = 'NA'))
 }
 
-s3_int_trans_moveavg3 <- s3_int_trans %>%
+s3_int_trans_moveavg3 <- s3_int_trans_epivchr9 %>%
   select(spacing, dist, background, MPRA, ave_ratio) %>%
   group_by(background, spacing, MPRA) %>%
   arrange(dist, .by_group = TRUE) %>%
@@ -1740,14 +1794,10 @@ s3_int_trans_moveavg3 <- s3_int_trans %>%
   unnest() %>%
   select(-dist1, -ave_ratio1)
 
-test <- s3_int_trans_moveavg3 %>%
-  filter(background == 's pGl4' & MPRA == 'episomal' & spacing == 20)
-
 
 #Subpool3 despite noise seems to have same distance effects across background
 
 p_space_dist_int_trans <- s3_int_trans_moveavg3 %>%
-  filter(background != 'v chr9') %>%
   mutate(background = factor(background, 
                              levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
   ggplot(aes(x = dist, y = ave_ratio, color = MPRA)) + 
@@ -1769,26 +1819,6 @@ p_space_dist_int_trans <- s3_int_trans_moveavg3 %>%
 ggsave('plots/p_space_dist_int_trans.pdf', p_space_dist_int_trans, 
           scale = 1.3, width = 8.5, height = 6.5, units = 'in')
 
-p_space15_dist_int_trans <- s3_int_trans_moveavg3 %>%
-  filter(background != 'v chr9' & spacing == 15) %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(x = dist, y = ave_ratio, color = MPRA)) + 
-  geom_point(alpha = 0.5, size = 1.2) +
-  geom_line(aes(y = ave_3), size = 0.4) +
-  facet_grid(background ~ .) +
-  scale_color_manual(values = c('#3CBB75FF', 'gray35')) +
-  ylab('Average expression (a.u.)') + 
-  panel_border(colour = 'black') +
-  scale_y_log10() +
-  annotation_logticks(sides = 'l') +
-  background_grid(major = 'x', minor = 'x', colour.major = 'grey90',
-                  colour.minor = 'grey95') +
-  scale_x_continuous("Distance to minimal promoter (bp)", 
-                     breaks = seq(from = 70, to = 190, by = 20)) +
-  theme(legend.position = 'right',
-        strip.background = element_rect(colour="black", fill="white"))
-
 
 #distance effects in episomal and integrated
 
@@ -1797,6 +1827,10 @@ s3_int_trans_bin20bp <- s3_int_trans %>%
   mutate(bin = cut(dist, seq(from = 66, to = 176, by = 22),
                    labels = c('67-88', '89-110', '111-132', '133-154',
                               '155-176')))
+
+test <- s3_int_trans_bin20bp %>%
+  group_by(background, MPRA, bin) %>%
+  summarize(median_bin = median(ave_ratio))
 
 p_s3_dist_int_bin20bp <- s3_int_trans_bin20bp %>%
   mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
@@ -2154,13 +2188,15 @@ p_int_trans_ave_med_rep_sp5 <- int_trans %>%
   filter(subpool == 'subpool5') %>%
   ggplot(aes(ave_med_ratio, ave_ratio_22)) +
   geom_point(alpha = 0.2, size = 1) + 
+  geom_point(data = test2, alpha = 1, aes(fill = 'orangered'), 
+             show.legend = FALSE, shape = 21, size = 2.25) +
   annotation_logticks() +
   xlab("Average integrated expression (a.u.)") +
   ylab("Average episomal expression (a.u.)") +
   scale_x_log10(limits = c(0.01, 20)) + 
   scale_y_log10(limits = c(0.09, 20))
 
-ggsave('plots/p_int_trans_ave_med_rep_sp5.pdf', p_int_trans_ave_med_rep_sp5, 
+ggsave('plots/p_int_trans_ave_med_rep_sp5_var.pdf', p_int_trans_ave_med_rep_sp5, 
        scale = 1.3, width = 3, height = 2.7, units = 'in')
 
 
@@ -2169,6 +2205,14 @@ ggsave('plots/p_int_trans_ave_med_rep_sp5.pdf', p_int_trans_ave_med_rep_sp5,
 s5_int_trans <- MPRA_ave %>%
   filter(subpool == 'subpool5') %>%
   subpool5()
+
+test <- s5_int_trans %>%
+  group_by(site1, site2, site3, site4, site5, site6, background) %>%
+  nest() %>%
+  sample_n(10) %>%
+  unnest()
+
+test2 <- test[c(1, 2, 9, 10, 19, 20),]
 
 pred_resid <- function(df1, x) {
   df2 <- df1 %>%
