@@ -113,7 +113,9 @@ bc_join_R22B <- bc_map_join_bc(SP3_SP5_map, bc_R22B)
 #Determine variant counts by summing--------------------------------------------
 
 #sum unique barcodes and normalized bc reads per variant. Set-up minimum BC's 
-#per variant in DNA at 8 for reliability
+#per variant in DNA at 8 for reliability. right_join with bc_count works 
+#because I only drop control 14 and control 7 from a couple samples and these
+#are dropped in the 8 BC minimum in DNA anyway.
 
 var_sum_bc_num <- function(df1) {
   bc_count <- df1 %>%
@@ -124,7 +126,7 @@ var_sum_bc_num <- function(df1) {
     group_by(subpool, name, most_common) %>%
     count(name, wt = normalized) %>%
     rename(sum = n)
-  bc_sum <- right_join(variant_sum, bc_count, 
+  bc_sum <- left_join(variant_sum, bc_count, 
                        by = c("name", "subpool", "most_common")) %>%
     ungroup()
   return(bc_sum)
@@ -159,7 +161,6 @@ var_expression <- function(df1, df2) {
   RNA_DNA <- left_join(df1, df2, 
                         by = c("name", "subpool", "most_common"), 
                         suffix = c("_DNA", "_RNA")) %>%
-    filter(sum_RNA > 0) %>%
     mutate(ratio = sum_RNA / sum_DNA)
   print('x defined as DNA, y defined as RNA in var_expression(x,y)')
   return(RNA_DNA)
@@ -307,8 +308,7 @@ bc_DNA_RNA_22B <- dna7_join_rna_rep(bc_join_DNA, bc_join_R22B)
 
 #Count barcodes per variant per DNA and RNA, set minimum of 8 BC's per variant 
 #in DNA, take median RNA/DNA per variant, then per variant determine 
-#the median absolute deviation of all barcode ratios. Then filter out variants 
-#with 0 median expression
+#the median absolute deviation of all barcode ratios. 
 
 ratio_bc_med_var <- function(df) {
   bc_count_DNA <- df %>%
@@ -319,7 +319,7 @@ ratio_bc_med_var <- function(df) {
     group_by(subpool, name, most_common) %>%
     filter(num_reads_RNA != 0) %>%
     summarize(barcodes_RNA = n())
-  bc_DNA_RNA <- inner_join(bc_count_DNA, bc_count_RNA, 
+  bc_DNA_RNA <- left_join(bc_count_DNA, bc_count_RNA, 
                            by = c('subpool', 'name', 'most_common')) %>%
     ungroup()
   bc_min_8_df <- left_join(bc_DNA_RNA, df, 
@@ -340,8 +340,7 @@ ratio_bc_med_var <- function(df) {
       mad_over_med))
   bc_med <- inner_join(med_mad, bc_DNA_RNA, 
                        by = c('subpool', 'name', 'most_common')) %>%
-    ungroup() %>%
-    filter(med_ratio > 0)
+    ungroup()
   return(bc_med)
 }
 
@@ -449,7 +448,9 @@ med_sum_join <- function(sum, med) {
   sum_select <- sum %>%
     select(name, ratio_22A, ratio_22B)
   med_select <- med %>%
-    select(name, med_ratio_22A, med_ratio_22B)
+    select(name, med_ratio_22A, med_ratio_22B) %>%
+    filter(med_ratio_22A > 0) %>%
+    filter(med_ratio_22B > 0)
   sum_med <- inner_join(sum_select, med_select, by = 'name') %>%
     select(-name)
   return(sum_med)
@@ -457,12 +458,6 @@ med_sum_join <- function(sum, med) {
 
 med_vs_sum <- med_sum_join(rep_0_22_A_B, med_rep_0_22_A_B) %>%
   var_log10()
-
-p_ave_med_vs_sum <- med_vs_sum %>%
-  mutate(ave_sum = (ratio_22A + ratio_22B)/2) %>%
-  mutate(ave_med = (med_ratio_22A + med_ratio_22B)/2) %>%
-  ggplot(aes(ave_sum, ave_med)) +
-  geom_point(alpha = 0.1)
 
 my_points <- function(data, mapping, ...) {
   ggplot(data = data, mapping = mapping) +
@@ -853,15 +848,23 @@ ggplot(df, aes(bp)) +
   geom_point(aes(y = ten), color = 'blue') +
   geom_line(aes(y = ten), color = 'blue')
 
-bp <- seq(0, 10, 1)
+bp <- seq(0, 50, 1)
 main <- tibble(main = sin((1/10.5*(2*pi))*bp)) 
 five <- tibble(five = sin((1/10.5*(2*pi))*bp + 1.5))
 ten <- tibble(ten = sin((1/10.5*(2*pi))*bp + 4.49))
-all <- cbind(bp, main, five, ten) %>%
-  gather(main, five, ten, key = 'CREB', value = 'y')
+main_plus_five <- main + 0.9*five
+main_plus_ten <- main + 0.7*ten
+main_plus_five <- rename(main_plus_five, main_plus_five = main)
+main_plus_ten <- rename(main_plus_ten, main_plus_ten = main)
+all <- cbind(bp, main, five, ten, main_plus_five, main_plus_ten) %>%
+  gather(main, five, ten, main_plus_five, main_plus_ten, key = 'CREB', 
+         value = 'y')
 
 ggplot(all, aes(bp, y, color = CREB)) +
-  geom_line()
+  geom_line() +
+  scale_x_continuous(breaks = c(0:50, 1)) +
+  geom_vline(xintercept = c(0:50, 1), alpha = 0.3)
+
 
 main_five <- tibble(main_five = 2*(cos(1.5/2)*sin((1/10.5*(2*pi))*bp + 1.5/2)))
 main_ten <- tibble(main_ten = 2*(cos(4.49/2)*sin((1/10.5*(2*pi))*bp + 4.49/2)))
@@ -1010,121 +1013,26 @@ ggsave('plots/p_subpool3_spa_4_vchr9_10.pdf', p_subpool3_spa_4_vchr9_10,
 
 #Plot subpool5 expression features----------------------------------------------
 
-#Concensus expression uninduced and induced
+#Consensus by weak expression across concentrations
 
-p_s5_consnum_0_4 <- s5_untidy %>%
-  filter(weak == 0) %>%
-  filter(conc == 0 | conc == 4) %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(as.factor(consensus), ave_ratio_norm, fill = as.factor(conc))) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) + 
-  scale_fill_manual(values = forskolin2, name = 'forskolin') +
-  facet_grid(~ background) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  panel_border(colour = 'black') +
-  scale_y_log10() +
-  annotation_logticks(sides = 'l') +
-  ylab('Average normalized\nexpression (a.u.)') +
-  xlab('Consensus sites')
-
-save_plot('plots/p_s5_consnum_0_4.pdf', p_s5_consnum_0_4, scale = 1.3,
-          base_width = 5, base_height = 2.5)
-
-#Weak expression uninduced and induced
-
-p_s5_weaknum_0_4 <- s5_untidy %>%
-  filter(consensus == 0) %>%
-  filter(conc == 0 | conc == 4) %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(as.factor(weak), ave_ratio_norm, fill = as.factor(conc))) +
-  geom_boxplot(outlier.size = 1, size = 0.3, outlier.shape = 21,
-               outlier.alpha = 1, position = position_dodge(0.75),
-               show.legend = TRUE) + 
-  scale_fill_manual(values = forskolin2, name = 'forskolin') +
-  facet_grid(~ background) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  panel_border(colour = 'black') +
-  xlab('Weak sites') +
-  ylab('Average normalized\nexpression (a.u.)') +
-  scale_y_continuous(limits = c(0.75, 2), breaks = c(0.75, 1, 1.25, 1.5))
-
-save_plot('plots/p_s5_weaknum_0_4.pdf', p_s5_weaknum_0_4, scale = 1.3,
-          base_width = 5, base_height = 2.5)
-
-#Consensus with weak induced expression
-
-p_s5_num_cons_num_weak <- s5_tidy %>%
-  filter(background == 's pGl4') %>%
-  ggplot(aes(as.factor(consensus), ave_ratio_22_norm)) +
+p_s5_num_cons_num_weak_epi_conc_spgl4 <- s5_untidy %>%
+  filter(background == 'v chr5') %>%
+  ggplot(aes(as.factor(consensus), ave_ratio_norm)) +
+  facet_grid(conc ~ ., scales = 'free') +
   geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
                outlier.shape = 21, outlier.alpha = 1, 
-               position = position_dodge(0.75), show.legend = TRUE) +
+               position = position_dodge(0.75), show.legend = FALSE) +
   scale_y_log10() + 
   panel_border(colour = 'black') +
   annotation_logticks(sides = 'l') +
   scale_fill_manual(name = 'number of\nweak sites', 
                     values = cbPalette7_grad_light) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+  theme(axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white")) +
-  background_grid(major = 'y', minor = 'none') + 
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  ylab('Average normalized\n expression (a.u.)') +
-  xlab('Number of consensus sites')
+  ylab('Average expression (a.u.)') +
+  xlab('Consensus CREs')
 
-save_plot('plots/p_s5_num_cons_num_weak.pdf', p_s5_num_cons_num_weak,
-          scale = 1.3, base_height = 2.25, base_width = 5.25)
 
-p_s5_num_cons_num_weak_allback_4 <- s5_tidy %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(as.factor(consensus), ave_ratio_22_norm)) +
-  facet_grid(background ~ .) +
-  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
-               outlier.shape = 21, outlier.alpha = 1, 
-               position = position_dodge(0.75), show.legend = TRUE) +
-  scale_y_log10() + 
-  panel_border(colour = 'black') +
-  annotation_logticks(sides = 'l') +
-  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light)  +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  background_grid(major = 'y', minor = 'none') + 
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  ylab('Average normalized\n expression (a.u.)') +
-  xlab('Number of consensus sites')
-
-save_plot('plots/p_s5_num_cons_num_weak_allback_4.pdf', 
-          p_s5_num_cons_num_weak_allback_4,
-          scale = 1.3, base_height = 4.75, base_width = 5.25)
-
-p_s5_num_cons_num_weak_allback_0 <- s5_tidy %>%
-  mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
-  ggplot(aes(as.factor(consensus), ave_ratio_0_norm)) +
-  facet_grid(background ~ .) +
-  geom_boxplot(aes(fill = as.factor(weak)), outlier.size = 1, size = 0.3, 
-               outlier.shape = 21, outlier.alpha = 1, 
-               position = position_dodge(0.75), show.legend = TRUE) +
-  panel_border(colour = 'black') +
-  scale_fill_manual(name = 'number of\nweak sites', values = cbPalette7_grad_light) +
-  theme(legend.position = 'right', axis.ticks.x = element_blank(),
-        strip.background = element_rect(colour="black", fill="white")) +
-  background_grid(major = 'y', minor = 'none') + 
-  geom_vline(xintercept = c(1.5:6.5), alpha = 0.25) +
-  ylab('Average normalized\n expression (a.u.)') +
-  xlab('Number of consensus sites')
-
-save_plot('plots/p_s5_num_cons_num_weak_allback_0.pdf', 
-          p_s5_num_cons_num_weak_allback_0,
-          scale = 1.3, base_height = 4.75, base_width = 5.25)
 
 #Looking at individual site expression
 
@@ -1551,20 +1459,22 @@ ggsave('plots/p_fig1_trans_rep.pdf', p_fig1_trans_rep, scale = 1.3,
 
 trans_4_pearsons <- tibble(
   sample = c('all', 'subpool3', 'subpool5'),
-  pearsons = c(round(cor(log10_rep_0_22_A_B$ratio_22A, 
+  pearsons = c(cor(log10_rep_0_22_A_B$ratio_22A, 
                          log10_rep_0_22_A_B$ratio_22B, 
-                         use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(filter(log10_rep_0_22_A_B, 
+                         use = "pairwise.complete.obs", method = "pearson"),
+               cor(filter(log10_rep_0_22_A_B, 
                                 subpool == 'subpool3')$ratio_22A,
                          filter(log10_rep_0_22_A_B, 
                                 subpool == 'subpool3')$ratio_22B,
-                         use = "pairwise.complete.obs", method = "pearson"), 3),
-               round(cor(filter(log10_rep_0_22_A_B, 
+                         use = "pairwise.complete.obs", method = "pearson"),
+               cor(filter(log10_rep_0_22_A_B, 
                                 subpool == 'subpool5')$ratio_22A,
                          filter(log10_rep_0_22_A_B, 
                                 subpool == 'subpool5')$ratio_22B,
-                         use = "pairwise.complete.obs", method = "pearson"), 
-                     3)))
+                         use = "pairwise.complete.obs", method = "pearson")),
+  R2 = pearsons^2)
+
+cor.test(log10_rep_0_22_A_B$ratio_22A, log10_rep_0_22_A_B$ratio_22B)
 
 write_csv(trans_4_pearsons, 'trans_4_pearsons.csv')
 
@@ -1688,6 +1598,8 @@ write_csv(pearsons_conc, 'pearsons_conc.csv')
 int_rep_1_2 <- read_tsv('../20171129_intLib/rep_1_2.txt') %>%
   mutate(ave_med_ratio = (med_ratio_br1 + med_ratio_br2)/2)
 
+(cor.test(log10(int_rep_1_2$med_ratio_br1), log10(int_rep_1_2$med_ratio_br2))$estimate)^2
+
 int_trans <- rep_0_22_A_B %>%
   select(subpool, name, most_common, barcodes_DNA, ratio_22A, barcodes_RNA_22A, 
          ratio_22B, barcodes_RNA_22B) %>%
@@ -1737,7 +1649,13 @@ int_trans_pearsons <- tibble(
                          filter(int_trans_log10, 
                                 subpool == 'subpool5')$ave_ratio_22,
                          use = "pairwise.complete.obs", method = "pearson"), 
-                     3)))
+                     3)),
+  R2 = pearsons^2)
+
+cor.test(filter(int_trans_log10, 
+                subpool == 'subpool5')$ave_med_ratio,
+         filter(int_trans_log10, 
+                subpool == 'subpool5')$ave_ratio_22)
 
 write_csv(int_trans_pearsons, 'int_trans_pearsons.csv')
 
@@ -1772,10 +1690,7 @@ s3_int_trans_epivchr9 <- s3_tidy %>%
   mutate(barcodes = (barcodes_RNA_22A + barcodes_RNA_22B)/2) %>%
   select(-barcodes_RNA_22A, -barcodes_RNA_22B) %>%
   mutate(MPRA = 'episomal') %>%
-  mutate(med_ratio_br1 = NA) %>%
-  mutate(med_ratio_br2 = NA) %>%
-  mutate(ave_med_ratio = NA) %>%
-  rbind(filter(s3_int_trans, background != 'v chr9'))
+  rbind(filter(s3_int_trans, (background != 'v chr9') & (MPRA != 'episomal')))
 
 
 library(caTools)
@@ -1799,7 +1714,7 @@ s3_int_trans_moveavg3 <- s3_int_trans_epivchr9 %>%
 
 p_space_dist_int_trans <- s3_int_trans_moveavg3 %>%
   mutate(background = factor(background, 
-                             levels = c('v chr9', 's pGl4', 'v chr5'))) %>%
+                             levels = c('s pGl4', 'v chr5', 'v chr9'))) %>%
   ggplot(aes(x = dist, y = ave_ratio, color = MPRA)) + 
   geom_point(alpha = 0.5, size = 1.2) +
   geom_line(aes(y = ave_3), size = 0.4) +
@@ -1817,7 +1732,7 @@ p_space_dist_int_trans <- s3_int_trans_moveavg3 %>%
         strip.background = element_rect(colour="black", fill="white"))
 
 ggsave('plots/p_space_dist_int_trans.pdf', p_space_dist_int_trans, 
-          scale = 1.3, width = 8.5, height = 6.5, units = 'in')
+          scale = 1.3, width = 10.5, height = 6.5, units = 'in')
 
 
 #distance effects in episomal and integrated
@@ -2358,6 +2273,9 @@ p_ind_site_ind_back_epi <- ggplot(ind_site_ind_back_p_r_epi,
                                    use = "pairwise.complete.obs", 
                                    method = "pearson"), 2)))
 
+(cor.test(ind_site_ind_back_p_r_epi$pred,
+         ind_site_ind_back_p_r_epi$ave_ratio)$estimate)^2
+
 p_ind_site_ind_back_sum_epi <- ind_site_ind_back_sum_epi %>%
   mutate(type = factor(type, 
                        levels = c('v chr9', 's pGl4', 'v chr5', 'consensus', 
@@ -2422,6 +2340,9 @@ p_ind_site_ind_back_int <- ggplot(ind_site_ind_back_p_r_int,
                                    use = "pairwise.complete.obs", 
                                    method = "pearson"), 2)))
 
+cor.test(ind_site_ind_back_p_r_int$pred,
+          ind_site_ind_back_p_r_int$ave_ratio)
+
 p_ind_site_ind_back_sum_int <- ind_site_ind_back_sum_int %>%
   mutate(type = factor(type, 
                        levels = c('v chr9', 's pGl4', 'v chr5', 'consensus', 
@@ -2465,10 +2386,8 @@ cons_pearsons_log10 <- s5_int_trans %>%
   var_log10() %>%
   filter(site_combo == 'consensus')
 
-cons_pearsons <- round(cor(cons_pearsons_log10$ave_med_ratio, 
-                           cons_pearsons_log10$ave_ratio_22, 
-                           use = "pairwise.complete.obs", 
-                           method = "pearson"), 2)
+(cor.test(cons_pearsons_log10$ave_med_ratio, 
+         cons_pearsons_log10$ave_ratio_22)$estimate)^2
 
 s5_int_trans_cons_lm <- pred_resid(var_log10(s5_int_trans), cons_int_epi_lm)
 
@@ -2490,6 +2409,13 @@ p_s5_int_trans_site_combo <- s5_int_trans_cons_lm %>%
 
 ggsave('plots/p_s5_int_trans_site_combo.pdf', p_s5_int_trans_site_combo,
        scale = 1.3, width = 4, height = 2.25, units = 'in')
+
+mixed <- s5_int_trans_cons_lm %>%
+  filter(site_combo == 'mixed')
+
+m <- count(mixed)
+n <- count(filter(mixed, resid < 0))
+n/m
 
 p_s5_int_trans_site_combo_resid <- s5_int_trans_cons_lm %>%
   ggplot(aes(as.factor(consensus), resid, fill = as.factor(weak))) +
@@ -3277,7 +3203,7 @@ trans_back_0_norm_conc <- trans_back_norm_pc_spGl4 %>%
   mutate(ave_ratio_0_norm = ave_ratio_0_norm - ave_ratio_0_norm) %>%
   var_conc_exp()
 
-trans_back_norm_pc_spGl4_conc <- trans_back_norm_pc_spGl4_conc %>%
+trans_back_norm_pc_spGl4_conc <- trans_back_0_norm_conc %>%
   mutate(conc = if_else(conc == 0,
                         2^-7,
                         conc)) %>%
@@ -3311,6 +3237,22 @@ p_titr_pc_back <- trans_back_norm_pc_spGl4_conc %>%
 
 save_plot('plots/p_titr_pc_back.pdf', p_titr_pc_back, scale = 1.3, 
           base_width = 4.5, base_height = 2.5)
+
+
+#plot effect of adding weak sites to response curve in subpool5
+
+s5_trans_back_0_norm_conc <- trans_back_norm_pc_spGl4_conc %>%
+  filter(subpool == 'subpool5') %>%
+  subpool5()
+
+s5_trans_back_0_norm_conc %>%
+  filter(consensus == 1 & conc != 2^-7) %>%
+  ggplot(aes(conc, ave_ratio_norm, color = weak)) +
+  geom_point() +
+  scale_color_viridis() +
+  scale_y_log10() +
+  geom_smooth()
+  
 
 
 #Fitting nested data
