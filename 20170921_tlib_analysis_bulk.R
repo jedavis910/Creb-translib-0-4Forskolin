@@ -19,6 +19,11 @@ cbPalette7_grad_light <- c('white', '#FDE725FF', '#B8DE29FF', '#55C667FF',
                            '#1F968BFF', '#39568CFF', '#482677FF')
 spacing_5_20_palette <- c('gray20', 'dodgerblue3', 'indianred2', '#55C667FF')
 
+figurefont_theme <- theme(text = element_text(size = 8)) +
+  theme(axis.title = element_text(size = 8)) +
+  theme(legend.title = element_text(size = 9)) +
+  theme(axis.text = element_text(size = 8))
+
 #Written for the analysis of a range of inductions in the transient library
 #DNA_BC: DNA
 #R0A_BC and R0B_BC: RNA at 0 µM Forsk replicate A and B
@@ -451,8 +456,8 @@ p_fig1_trans_med_rep <- med_rep_0_22_A_B %>%
   annotation_logticks(scaled = TRUE) +
   xlab("Expression (a.u.) replicate 1") +
   ylab("Expression (a.u.) replicate 2") +
-  scale_x_log10(limits = c(0.01, 20), breaks = c(0.01, 0.1, 1, 10)) + 
-  scale_y_log10(limits = c(0.01, 20), breaks = c(0.01, 0.1, 1, 10)) +
+  scale_x_log10(limits = c(0.03, 20), breaks = c(0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.03, 20), breaks = c(0.1, 1, 10)) +
   theme(strip.background = element_rect(colour="black", fill="white"),
         axis.line.y = element_line(), panel.spacing.x=unit(1, "lines")) 
 
@@ -1054,6 +1059,7 @@ ggsave('plots/p_subpool3_spa_4_vchr9_10.pdf', p_subpool3_spa_4_vchr9_10,
 
 #Plot subpool5 expression features----------------------------------------------
 
+
 #Consensus by weak expression across concentrations
 
 p_s5_num_cons_num_weak_epi_conc_spgl4 <- s5_untidy %>%
@@ -1072,7 +1078,6 @@ p_s5_num_cons_num_weak_epi_conc_spgl4 <- s5_untidy %>%
         strip.background = element_rect(colour="black", fill="white")) +
   ylab('Average expression (a.u.)') +
   xlab('Consensus CREs')
-
 
 
 #Looking at individual site expression
@@ -2620,7 +2625,7 @@ MPRA_ave <- int_trans %>%
   mutate(background = str_sub(background, 
                               nchar(background)-5,
                               nchar(background))) %>%
-  select(subpool, name, background, barcodes_RNA_br1, barcodes_RNA_br2, 
+  select(subpool, name, most_common, background, barcodes_RNA_br1, barcodes_RNA_br2, 
          med_ratio_br1, med_ratio_br2, ave_med_ratio, barcodes_RNA_22A, 
          barcodes_RNA_22B, med_ratio_22A, med_ratio_22B, ave_ratio_22) %>%
   mutate(integrated = (barcodes_RNA_br1 + barcodes_RNA_br2)/2) %>%
@@ -2635,6 +2640,30 @@ MPRA_ave <- int_trans %>%
   select(-MPRA2)
 
 int_trans_log10 <- var_log10(int_trans)
+
+p_int_trans_rep <- int_trans %>%
+  ggplot(aes(ave_med_ratio, ave_ratio_22)) +
+  geom_point(alpha = 0.1, size = 0.75) +
+  geom_point(data = filter(int_trans, 
+                           grepl(
+                             'subpool5_no_site_no_site_no_site_no_site_no_site_no_site',
+                             name)), 
+             fill = 'orange', shape = 21, size = 2.25) +
+  geom_point(data = filter(int_trans, 
+                           name == 'pGL4.29 Promega 1-63 + 1-87'), 
+             fill = 'red', shape = 21, size = 2.25) +
+  xlab("Average integrated expression (a.u.)") +
+  ylab("Average episomal expression (a.u.)") +
+  scale_x_log10(limits = c(0.01, 20), breaks = c(0.01, 0.1, 1, 10)) + 
+  scale_y_log10(limits = c(0.05, 20), breaks = c(0.1, 1, 10)) +
+  annotation_logticks(scaled = TRUE)
+
+ggsave('plots/Median transient analysis/p_int_trans_rep.pdf', 
+       p_int_trans_rep, scale = 1.3,
+       width = 2.1, height = 1.8, units = 'in')
+
+
+
 
 int_trans_pearsons <- tibble(
   sample = c('all', 'subpool3', 'subpool5'),
@@ -2714,9 +2743,9 @@ p_subpool3_spa_4_vchr9_5_10 <- s3_tidy_moveavg3 %>%
   scale_color_manual(values = c('gray20', 'dodgerblue3'), name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = c(78, 88.5), color = 'gray20', linetype = 2, 
+  geom_vline(xintercept = c(78, 88), color = 'gray20', linetype = 2, 
              alpha = 0.5) +
-  geom_vline(xintercept = c(82.5, 92.5), color = 'dodgerblue3', linetype = 2, 
+  geom_vline(xintercept = c(83, 92), color = 'dodgerblue3', linetype = 2, 
              alpha = 0.5) +
   scale_y_log10(limits = c(0.1, 2)) +
   annotation_logticks(sides = 'l') +
@@ -2737,7 +2766,7 @@ p_subpool3_spa_4_vchr9_5_15 <- s3_tidy_moveavg3 %>%
                     name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = c(78, 88.5), color = 'gray20', linetype = 2, 
+  geom_vline(xintercept = c(78, 88), color = 'gray20', linetype = 2, 
              alpha = 0.5) +
   scale_y_log10(limits = c(0.1, 2)) +
   annotation_logticks(sides = 'l') +
@@ -2761,7 +2790,7 @@ p_subpool3_spa_4_vchr9_10_20 <- s3_tidy_moveavg3 %>%
                     name = 'spacing (bp)') +
   ylab('Average expression (a.u.)') + 
   panel_border(colour = 'black') +
-  geom_vline(xintercept = c(82.5, 92.5), color = 'dodgerblue3', linetype = 2, 
+  geom_vline(xintercept = c(83, 92), color = 'dodgerblue3', linetype = 2, 
              alpha = 0.5) +
   scale_y_log10(limits = c(0.1, 2)) +
   annotation_logticks(sides = 'l') +
@@ -2782,6 +2811,46 @@ ggsave('plots/Median transient analysis/p_subpool3_med_spa_4_vchr9_5_15.pdf',
 ggsave('plots/Median transient analysis/p_subpool3_med_spa_4_vchr9_10_20.pdf', 
        p_subpool3_spa_4_vchr9_10_20, 
        scale = 1.3, height = 1.65, width = 4.8, units = 'in')
+
+
+#Plot all overlays with distance of the distal CRE
+
+distal_cre_distance <- function(df) {
+  five <- df %>%
+    filter(spacing == 5) %>%
+    mutate(dist = dist + 13)
+  ten <- df %>%
+    filter(spacing == 10) %>%
+    mutate(dist = dist + 18)
+  fifteen <- df %>%
+    filter(spacing == 15) %>%
+    mutate(dist = dist + 23)
+  twenty <- df %>%
+    filter(spacing == 20) %>%
+    mutate(dist = dist + 28)
+  mod_dist <- rbind(five, ten, fifteen, twenty)
+}
+
+s3_tidy_moveavg3_distaldist <- distal_cre_distance(s3_tidy_moveavg3)
+
+s3_tidy_moveavg3_distaldist %>%
+  filter(background == 'v chr9' & dist < 139) %>%
+  ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
+  geom_line(aes(y = ave_3), size = 0.4) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  scale_color_manual(values = spacing_5_20_palette,
+                     name = 'spacing (bp)') +
+  scale_fill_manual(values = spacing_5_20_palette,
+                    name = 'spacing (bp)') +
+  ylab('Average expression (a.u.)') + 
+  panel_border(colour = 'black') +
+  scale_y_log10(limits = c(0.1, 2)) +
+  annotation_logticks(sides = 'l') +
+  background_grid(major = 'x', minor = 'none') +
+  scale_x_continuous("Distance from distal CRE to minimal promoter (bp)", 
+                     breaks = seq(from = 79, to = 139, by = 10)) +
+  theme(legend.position = 'right', axis.ticks.x = element_blank(),
+        strip.background = element_rect(colour="black", fill="white"))
 
 
 #Distance effects
@@ -3319,6 +3388,42 @@ ggsave('plots/Median transient analysis/p_s5_num_cons_num_weak_epi_int_vchr5.pdf
        scale = 1.3, width = 5, height = 3.25, units = 'in')
 
 
+#Effect of background
+
+#measure gc content per sequence with background and CRE sites output file to 
+#python script
+
+median_s5 <- s5_int_trans %>%
+  select(most_common) %>%
+  write_csv('median_s5.csv', col_names = FALSE)
+
+#Read in file with gc content calculated
+
+median_s5_gc <- read_csv('median_s5_gc.csv', 
+                         col_names = c('most_common', 'gc'), col_types = 'cd')
+
+s5_int_trans <- s5_int_trans %>%
+  left_join(median_s5_gc, by = 'most_common')
+
+bg_gc_consensus <- s5_int_trans %>%
+  filter(weak == 0) %>%
+  ggplot(aes(gc, ave_ratio)) +
+  facet_grid(MPRA ~ consensus, scale = 'free') +
+  geom_point(alpha = 0.4, size = 1) +
+  scale_y_log10() +
+  panel_border(colour = 'black') +
+  annotation_logticks(sides = 'l') +
+  ylab('Average expression (a.u.)') +
+  xlab('GC content') + 
+  scale_x_continuous(limits = c(0.4, 0.57), 
+                     breaks = c(0.4, 0.45, 0.5, 0.55)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.background = element_rect(colour="black", fill="white")) +
+  figurefont_theme
+
+ggsave('plots/Median transient analysis/bc_gc_consensus.pdf', bg_gc_consensus,
+       units = 'in', width = 7, height = 4)
+
 #Linear models
 
 #Including weak sites, all independent, independent background 
@@ -3396,6 +3501,11 @@ p_ind_site_ind_back_epi <- ggplot(ind_site_ind_back_p_r_epi,
                                    use = "pairwise.complete.obs", 
                                    method = "pearson"), 2)))
 
+cor(ind_site_ind_back_p_r_epi$pred,
+    ind_site_ind_back_p_r_epi$ave_ratio,
+    use = "pairwise.complete.obs", 
+    method = "spearman")
+
 p_ind_site_ind_back_sum_epi <- ind_site_ind_back_sum_epi %>%
   mutate(type = factor(type, 
                        levels = c('v chr9', 's pGl4', 'v chr5', 'consensus', 
@@ -3464,6 +3574,11 @@ p_ind_site_ind_back_int <- ggplot(ind_site_ind_back_p_r_int,
                                    use = "pairwise.complete.obs", 
                                    method = "pearson"), 2)))
 
+cor(ind_site_ind_back_p_r_int$pred,
+    ind_site_ind_back_p_r_int$ave_ratio,
+    use = "pairwise.complete.obs", 
+    method = "spearman")
+
 cor.test(ind_site_ind_back_p_r_int$pred,
          ind_site_ind_back_p_r_int$ave_ratio)
 
@@ -3512,6 +3627,18 @@ cons_int_epi_lm <- lm(ave_ratio_22 ~ ave_med_ratio,
                                               site_combo == 'consensus')))
 
 s5_int_trans_cons_lm <- pred_resid(var_log10(s5_int_trans), cons_int_epi_lm)
+
+s5_int_trans_cons_tot_weak <- s5_int_trans_cons_lm %>%
+  filter(weak > 0) %>%
+  summarize(n())
+
+s5_int_trans_cons_greatergen_weak <- s5_int_trans_cons_lm %>%
+  filter(weak > 0) %>%
+  filter(resid < 0) %>%
+  summarize(n())
+
+(s5_int_trans_cons_greatergen_weak/s5_int_trans_cons_tot_weak)*100
+
 
 cor(s5_int_trans_cons_lm$ave_ratio, 
     s5_int_trans_cons_lm$pred, 
