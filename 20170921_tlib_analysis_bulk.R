@@ -465,6 +465,10 @@ ggsave('plots/Median transient analysis/p_fig1_trans_med_rep.pdf',
        p_fig1_trans_med_rep, scale = 1.3,
        width = 2.1, height = 1.8, units = 'in')
 
+ggsave('plots/Median transient analysis/p_fig1_trans_med_rep.png', 
+       p_fig1_trans_med_rep, scale = 1.3,
+       width = 2.1, height = 1.8, units = 'in')
+
 log10_med_rep_0_22_A_B <- var_log10(med_rep_0_22_A_B)
 
 trans_med_4_pearsons <- tibble(
@@ -1787,10 +1791,6 @@ s3_int_trans_bin20bp <- s3_int_trans %>%
                    labels = c('67-88', '89-110', '111-132', '133-154',
                               '155-176')))
 
-test <- s3_int_trans_bin20bp %>%
-  group_by(background, MPRA, bin) %>%
-  summarize(median_bin = median(ave_ratio))
-
 p_s3_dist_int_bin20bp <- s3_int_trans_bin20bp %>%
   mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
   filter(spacing != 0 & spacing != 70 & background != 'v chr9' & MPRA == 'integrated') %>%
@@ -2662,6 +2662,10 @@ ggsave('plots/Median transient analysis/p_int_trans_rep.pdf',
        p_int_trans_rep, scale = 1.3,
        width = 2.1, height = 1.8, units = 'in')
 
+ggsave('plots/Median transient analysis/p_int_trans_rep.png', 
+       p_int_trans_rep, scale = 1.3,
+       width = 2.1, height = 1.8, units = 'in')
+
 
 
 
@@ -2834,7 +2838,7 @@ distal_cre_distance <- function(df) {
 s3_tidy_moveavg3_distaldist <- distal_cre_distance(s3_tidy_moveavg3)
 
 s3_tidy_moveavg3_distaldist %>%
-  filter(background == 'v chr9' & dist < 139) %>%
+  filter(background == 'v chr9' & spacing != 0 & spacing != 70) %>%
   ggplot(aes(x = dist, y = ave_ratio_22, color = as.factor(spacing))) +
   geom_line(aes(y = ave_3), size = 0.4) +
   geom_point(alpha = 0.5, size = 1.2) +
@@ -2848,7 +2852,7 @@ s3_tidy_moveavg3_distaldist %>%
   annotation_logticks(sides = 'l') +
   background_grid(major = 'x', minor = 'none') +
   scale_x_continuous("Distance from distal CRE to minimal promoter (bp)", 
-                     breaks = seq(from = 79, to = 139, by = 10)) +
+                     breaks = seq(from = 79, to = 199, by = 10)) +
   theme(legend.position = 'right', axis.ticks.x = element_blank(),
         strip.background = element_rect(colour="black", fill="white"))
 
@@ -2864,6 +2868,17 @@ s3_int_trans_bin20bp <- s3_int_trans %>%
   mutate(bin = cut(dist, seq(from = 66, to = 176, by = 22),
                    labels = c('67-88', '89-110', '111-132', '133-154',
                               '155-176')))
+
+s3_int_trans_bin10bp <- s3_int_trans %>%
+  filter(dist <= 176) %>%
+  mutate(bin = cut(dist, seq(from = 66, to = 177, by = 10),
+                   labels = c('67-76', '77-86', '87-96', '97-106', '107-116',
+                              '117-126', '127-136', '137-146', '147-156', 
+                              '157-166', '167-176')))
+
+s3_int_trans_bin10bp_med <- s3_int_trans_bin10bp %>%
+  group_by(background, MPRA, bin) %>%
+  summarize(median_bin = median(ave_ratio))
 
 p_s3_dist_int_bin20bp <- s3_int_trans_bin20bp %>%
   mutate(background = factor(background, levels = c('s pGl4', 'v chr5'))) %>%
@@ -3414,7 +3429,7 @@ bg_gc_consensus <- s5_int_trans %>%
   panel_border(colour = 'black') +
   annotation_logticks(sides = 'l') +
   ylab('Average expression (a.u.)') +
-  xlab('GC content') + 
+  xlab('Variant GC content') + 
   scale_x_continuous(limits = c(0.4, 0.57), 
                      breaks = c(0.4, 0.45, 0.5, 0.55)) + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
@@ -3566,13 +3581,7 @@ p_ind_site_ind_back_int <- ggplot(ind_site_ind_back_p_r_int,
                      limits = c(-2.1, 1.8)) + 
   scale_y_continuous(name = 'Predicted expression', breaks = c(-2:1),
                      limits = c(-2.1, 1.8)) +
-  annotation_logticks(sides = 'bl') +
-  annotate("text", x = -0.5, y = 1, 
-           label = paste('r =', 
-                         round(cor(ind_site_ind_back_p_r_int$pred,
-                                   ind_site_ind_back_p_r_int$ave_ratio,
-                                   use = "pairwise.complete.obs", 
-                                   method = "pearson"), 2)))
+  annotation_logticks(sides = 'bl')
 
 cor(ind_site_ind_back_p_r_int$pred,
     ind_site_ind_back_p_r_int$ave_ratio,
@@ -3608,6 +3617,10 @@ p_ind_site_ind_back_anova_int <- ind_site_ind_back_anova_int %>%
         axis.ticks.x = element_blank(), axis.title.x = element_blank())
 
 ggsave('plots/Median transient analysis/p_ind_site_ind_back_int.pdf', 
+       p_ind_site_ind_back_int, 
+       scale = 1.3, width = 2.3, height = 2.3, units = 'in')
+
+ggsave('plots/Median transient analysis/p_ind_site_ind_back_int.png', 
        p_ind_site_ind_back_int, 
        scale = 1.3, width = 2.3, height = 2.3, units = 'in')
 
